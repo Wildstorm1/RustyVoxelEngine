@@ -1,35 +1,31 @@
-use sdl3::pixels::Color;
+/*
+ * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
+ */
+
+use sdl3::{pixels::Color, video::WindowFlags};
 use sdl3::event::Event;
 use sdl3::keyboard::Keycode;
 use std::time::Duration;
 use ash::{vk, Entry};
 
+mod graphics;
+
 fn main() {
     let sdl_context = sdl3::init().map_err(|e| e.to_string()).unwrap();
     let video_subsystem = sdl_context.video().map_err(|e| e.to_string()).unwrap();
+    video_subsystem.vulkan_load_library_default().unwrap();
+
     let window = video_subsystem
         .window("SDL3 Rust Demo", 800, 600)
         .position_centered()
+        .set_flags(WindowFlags::VULKAN)
         .build()
         .map_err(|e| e.to_string())
         .unwrap();
 
-    let mut canvas = window.into_canvas();
+    let instance = graphics::vulkan::instance::VulkanInstance::new().unwrap();
+
     let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string()).unwrap();
-
-    let entry = Entry::linked();
-
-    let app_info = vk::ApplicationInfo {
-        api_version: vk::make_api_version(0, 1, 0, 0),
-        ..Default::default()
-    };
-
-    let create_info = vk::InstanceCreateInfo {
-        p_application_info: &app_info,
-        ..Default::default()
-    };
-
-    let instance = unsafe { entry.create_instance(&create_info, None).unwrap() };
 
     'running: loop {
         for event in event_pump.poll_iter() {
@@ -39,10 +35,6 @@ fn main() {
             }
         }
 
-        canvas.set_draw_color(Color::RGB(30, 40, 60));
-        canvas.clear();
-        canvas.present();
-
-        std::thread::sleep(Duration::from_millis(16));
+        // App stuff
     }
 }
