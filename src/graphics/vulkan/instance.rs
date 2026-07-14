@@ -12,7 +12,7 @@ use sdl3::sys::{vulkan};
  * Simple struct for initialization error
  */
 #[derive(Debug)]
-pub struct InitError;
+pub struct InstanceInitError;
 
 /*
  * App specific instance of vulkan
@@ -22,13 +22,13 @@ pub struct VulkanInstance {
 }
 
 impl VulkanInstance {
-    pub fn new() -> Result<Self, InitError> {
+    pub fn new() -> Result<Self, InstanceInitError> {
         println!("Starting vulkan setup");
 
         let entry = Entry::linked();
 
-        let engine_name = c_string_or_error("NoEngine".to_string(), InitError)?;
-        let application_name = c_string_or_error("Settle And Survive".to_string(), InitError)?;
+        let engine_name = c_string_or_error("NoEngine".to_string(), InstanceInitError)?;
+        let application_name = c_string_or_error("Settle And Survive".to_string(), InstanceInitError)?;
         let app_info = vk::ApplicationInfo {
             application_version: vk::make_api_version(0, 0, 1, 0),
             engine_version: vk::make_api_version(0, 0, 1, 0),
@@ -53,15 +53,15 @@ impl VulkanInstance {
             }).collect::<HashSet<_>>(),
             Err(e) => {
                 println!("Failed to enumerate instance layer properties: {}", e);
-                return Err(InitError);
+                return Err(InstanceInitError);
             }
         };
 
-        let validation_layer_name = c_string_or_error("VK_LAYER_KHRONOS_validation".to_string(), InitError)?;
+        let validation_layer_name = c_string_or_error("VK_LAYER_KHRONOS_validation".to_string(), InstanceInitError)?;
 
         if !available_layer_names.contains(&validation_layer_name) {
             println!("Validation layer not available on machine");
-            return Err(InitError);
+            return Err(InstanceInitError);
         }
 
         let enabled_layers = vec![validation_layer_name.as_ptr()];
