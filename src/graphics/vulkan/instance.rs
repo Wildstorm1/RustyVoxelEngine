@@ -7,6 +7,7 @@ use std::ffi::{ CStr};
 use std::collections::HashSet;
 use ash::{vk, Entry, Instance};
 use sdl3::sys::{vulkan};
+use sdl3::video::Window;
 
 /*
  * Simple struct for initialization error
@@ -22,8 +23,8 @@ pub struct VulkanInstance {
 }
 
 impl VulkanInstance {
-    pub fn new() -> Result<Self, InstanceInitError> {
-        println!("Starting vulkan setup");
+    pub unsafe fn new() -> Result<Self, InstanceInitError> {
+        println!("Starting vulkan instance setup");
 
         let entry = Entry::linked();
 

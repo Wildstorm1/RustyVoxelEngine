@@ -23,7 +23,7 @@ fn main() {
         .map_err(|e| e.to_string())
         .unwrap();
 
-    let instance = graphics::vulkan::instance::VulkanInstance::new().unwrap();
+    //let device = unsafe { graphics::vulkan::device::VulkanDevice::new(window).unwrap() };
 
     let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string()).unwrap();
 
