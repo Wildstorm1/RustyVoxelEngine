@@ -2,6 +2,8 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
+use std::ffi::{CStr, CString};
+
 use crate::graphics::vulkan::utils::{c_string_or_error};
 use crate::graphics::vulkan::instance::{VulkanInstance};
 use sdl3::sys::{vulkan};
@@ -22,7 +24,7 @@ pub struct VulkanDevice {
 }
 
 impl VulkanDevice {
-    pub unsafe fn new(window: Window) -> Result<Self, DeviceInitError> {
+    pub unsafe fn new(window: &Window) -> Result<Self, DeviceInitError> {
         println!("Starting vulkan device setup");
 
         let instance = match unsafe { VulkanInstance::new() } {
@@ -30,16 +32,13 @@ impl VulkanDevice {
             Err(_) => return Err(DeviceInitError),
         };
 
-        /*
         let surface = unsafe {
             match window.vulkan_create_surface(instance.instance.handle()) {
                 Ok(surface) => surface,
                 Err(_) => return Err(DeviceInitError),
             }
         };
-        */
 
-        /*
         let physical_device_handles = unsafe {
             match instance.instance.enumerate_physical_devices() {
                 Ok(devices) => devices,
@@ -54,13 +53,13 @@ impl VulkanDevice {
 
             let device_name_u8_bytes = properties.device_name.iter()
                 .map(|&c| c as u8)
+                .filter(|&x| x > 0)
                 .collect();
 
             println!("\t Found Device: {:?}", String::from_utf8(device_name_u8_bytes).unwrap());
             println!("\t\t Device Type: {:?}", properties.device_type);
             println!("\t\t Device Index Limit: {:?}", properties.limits.max_draw_indexed_index_value);
         }
-        */
 
         Ok ( Self {
             instance: instance,

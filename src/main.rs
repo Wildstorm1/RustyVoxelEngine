@@ -16,14 +16,17 @@ fn main() {
     video_subsystem.vulkan_load_library_default().unwrap();
 
     let window = video_subsystem
-        .window("SDL3 Rust Demo", 800, 600)
+        .window("Settle And Survive", 800, 600)
         .position_centered()
         .set_flags(WindowFlags::VULKAN)
         .build()
         .map_err(|e| e.to_string())
         .unwrap();
 
-    //let device = unsafe { graphics::vulkan::device::VulkanDevice::new(window).unwrap() };
+    let device = unsafe { match graphics::vulkan::device::VulkanDevice::new(&window) {
+        Ok(value) => value,
+        Err(_) => { println!("hi"); return; }
+    } };
 
     let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string()).unwrap();
 
@@ -35,6 +38,9 @@ fn main() {
             }
         }
 
+        if window.is_maximized() {
+            println!("Keep window in scope");
+        }
         // App stuff
     }
 }
