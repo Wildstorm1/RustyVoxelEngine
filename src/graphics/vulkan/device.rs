@@ -2,12 +2,10 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use std::ffi::{CStr, CString};
-
-use crate::graphics::vulkan::utils::{c_string_or_error};
 use crate::graphics::vulkan::instance::{VulkanInstance};
-use sdl3::sys::{vulkan};
-use ash::{vk};
+use std::collections::{HashMap, HashSet};
+use std::ffi::{CStr, CString};
+use ash::{vk, Device};
 use sdl3::video::Window;
 
 /*
@@ -17,52 +15,297 @@ use sdl3::video::Window;
 pub struct DeviceInitError;
 
 /*
+ * List of indices for relevant device queues
+ */
+struct DeviceQueueIndexes {
+    graphics_index: Option<u32>,
+    presentation_index: Option<u32>,
+}
+
+/*
+ * List of indices for relevant device queues
+ */
+pub struct DeviceQueueMetadata {
+    graphics_index: u32,
+    graphics_queue: vk::Queue,
+    presentation_index: u32,
+    presentation_queue: vk::Queue,
+}
+
+/*
  * App specific device wrapper around vulkan
  */
 pub struct VulkanDevice {
     instance: VulkanInstance,
+    physical_device: vk::PhysicalDevice,
+    device: Device,
+    queues: DeviceQueueMetadata,
+}
+
+fn device_supports_extensions(
+    instance: &VulkanInstance,
+    device_handle: vk::PhysicalDevice,
+    extensions: HashSet<String>
+) -> bool {
+    let properties = unsafe { match instance.instance.enumerate_device_extension_properties(device_handle) {
+        Ok(extensions) => extensions,
+        Err(err) => {
+            println!("Error getting device extension properties {}", err);
+            return false;
+        }
+    } };
+
+    let mut supported_extensions = HashSet::new();
+
+    properties.iter().map(|extension| {
+        let c_str = unsafe { CStr::from_ptr(extension.extension_name.as_ptr()) };
+
+        match c_str.to_str() {
+            Ok(string) => string.to_string(),
+            Err(err) => {
+                println!("Error converting c string array to rust string {}", err);
+                return "_invalid_extension_name_".to_string();
+            }
+        }
+    }).filter(|extension| {
+        extensions.contains(extension.as_str())
+    }).for_each(|extension| {
+        println!("\t Required Extension Supported: {}", extension);
+        supported_extensions.insert(extension);
+    });
+
+    supported_extensions.len() == extensions.len()
+}
+
+fn device_supports_surface(
+    instance: &VulkanInstance,
+    device_handle: vk::PhysicalDevice,
+    surface: vk::SurfaceKHR
+) -> bool {
+    let formats = unsafe { match instance.surface.get_physical_device_surface_formats(device_handle, surface) {
+        Ok(formats) => formats,
+        Err(err) => {
+            println!("Error getting surface formats {}", err);
+            return false;
+        },
+    } };
+
+    let present_modes = unsafe { match instance.surface.get_physical_device_surface_present_modes(device_handle, surface) {
+        Ok(present_modes) => present_modes,
+        Err(err) => {
+            println!("Error getting surface present modes {}", err);
+            return false;
+        },
+    } };
+
+    formats.len() > 0 && present_modes.len() > 0
+}
+
+fn get_device_queues(
+    instance: &VulkanInstance,
+    device_handle: vk::PhysicalDevice,
+    surface: vk::SurfaceKHR
+) -> DeviceQueueIndexes {
+    let queue_family_properties = unsafe { instance.instance.get_physical_device_queue_family_properties(device_handle) };
+    let mut graphics_queue = Option::None;
+    let mut presentation_queue = Option::None;
+
+    queue_family_properties.iter().enumerate().for_each(|(i, family_properties)| {
+        let presentation_supported = unsafe { match instance.surface.get_physical_device_surface_support(device_handle, i as u32, surface) {
+            Ok(supported) => supported,
+            Err(err) => {
+                println!("Error present queue support {}", err);
+                false
+            }
+        } };
+
+        if presentation_supported {
+            presentation_queue = Some(i as u32);
+        }
+
+        if family_properties.queue_flags.contains(vk::QueueFlags::GRAPHICS) {
+            graphics_queue = Some(i as u32);
+        }
+    });
+
+    DeviceQueueIndexes {
+        graphics_index: graphics_queue,
+        presentation_index: presentation_queue
+    }
+}
+
+fn select_physical_device(
+    instance: &VulkanInstance,
+    surface_handle: vk::SurfaceKHR,
+    extensions: Vec<String>
+) -> Result<vk::PhysicalDevice, DeviceInitError> {
+    let physical_device_handles = unsafe {
+        match instance.instance.enumerate_physical_devices() {
+            Ok(devices) => devices,
+            Err(_) => return Err(DeviceInitError),
+        }
+    };
+
+    let mut device_scores = HashMap::new();
+
+    for physical_device_handle in &physical_device_handles {
+        let properties = unsafe {
+            instance.instance.get_physical_device_properties(*physical_device_handle)
+        };
+
+        let features = unsafe {
+            instance.instance.get_physical_device_features(*physical_device_handle)
+        };
+
+        let device_name_u8_bytes = properties.device_name.iter()
+            .map(|&c| c as u8)
+            .filter(|&x| x > 0)
+            .collect();
+
+        println!("\t Found Device: {:?}", String::from_utf8(device_name_u8_bytes).unwrap());
+        println!("\t\t Device Type: {:?}", properties.device_type);
+        println!("\t\t Device Index Limit: {:?}", properties.limits.max_draw_indexed_index_value);
+
+        device_scores.insert(*physical_device_handle, 0);
+
+        // Safe to unwrap since we just inserted a handle
+        if properties.device_type == vk::PhysicalDeviceType::DISCRETE_GPU {
+            device_scores.insert(*physical_device_handle, device_scores.get(physical_device_handle).unwrap() + 1000);
+        }
+
+        if device_supports_extensions(&instance, *physical_device_handle, extensions.clone().into_iter().collect()) {
+            device_scores.insert(*physical_device_handle, device_scores.get(physical_device_handle).unwrap() + 750);
+        }
+
+        if device_supports_surface(&instance, *physical_device_handle, surface_handle) {
+            device_scores.insert(*physical_device_handle, device_scores.get(physical_device_handle).unwrap() + 100);
+        }
+
+        let device_queues = get_device_queues(&instance, *physical_device_handle, surface_handle);
+
+        if device_queues.graphics_index.is_some() && device_queues.presentation_index.is_some() {
+            device_scores.insert(*physical_device_handle, device_scores.get(physical_device_handle).unwrap() + 750);
+        }
+
+        println!("\t\t Device Score {:?}", device_scores.get(&physical_device_handle));
+    }
+
+    let mut best_score = 0;
+    let mut best_device_handle = physical_device_handles[0];
+
+    device_scores.iter().for_each(|(device, score)| {
+        if *score > best_score {
+            best_device_handle = *device;
+            best_score = *score;
+        }
+    });
+
+    Ok(best_device_handle)
 }
 
 impl VulkanDevice {
     pub unsafe fn new(window: &Window) -> Result<Self, DeviceInitError> {
         println!("Starting vulkan device setup");
 
+        let extensions = vec![
+            "VK_KHR_swapchain",
+            "VK_EXT_mesh_shader",
+            "VK_EXT_descriptor_indexing"
+        ];
+
+        let extensions_strings: Vec<String> = extensions.iter()
+            .map(|string| string.to_string())
+            .collect();
+
+        let extensions_c_strings: Vec<CString> = extensions.iter()
+            .map(|string|
+                CString::new(*string).expect("Rust string shouldn't contain nul byte")
+            )
+            .collect();
+
+        let extensions_raw_c_strings: Vec<*const i8> = extensions_c_strings.iter()
+            .map(|string|
+                string.as_ptr() as *const i8
+            )
+            .collect();
+
         let instance = match unsafe { VulkanInstance::new() } {
             Ok(instance) => instance,
             Err(_) => return Err(DeviceInitError),
         };
 
-        let surface = unsafe {
+        let surface_handle = unsafe {
             match window.vulkan_create_surface(instance.instance.handle()) {
                 Ok(surface) => surface,
                 Err(_) => return Err(DeviceInitError),
             }
         };
 
-        let physical_device_handles = unsafe {
-            match instance.instance.enumerate_physical_devices() {
-                Ok(devices) => devices,
-                Err(_) => return Err(DeviceInitError),
+        let best_device_handle = select_physical_device(&instance, surface_handle, extensions_strings)?;
+        let device_queues = get_device_queues(&instance, best_device_handle, surface_handle);
+
+        let priority = 1.0f32;
+
+        let queue_infos = [
+            vk::DeviceQueueCreateInfo {
+                queue_family_index: device_queues.graphics_index.unwrap(),
+                queue_count: 1,
+                p_queue_priorities: &priority,
+                ..Default::default()
+            },
+            vk::DeviceQueueCreateInfo {
+                queue_family_index: device_queues.presentation_index.unwrap(),
+                queue_count: 1,
+                p_queue_priorities: &priority,
+                ..Default::default()
+            }
+        ];
+
+        let descriptor_indexing_features = vk::PhysicalDeviceDescriptorIndexingFeatures {
+            descriptor_binding_uniform_buffer_update_after_bind: vk::TRUE,
+            descriptor_binding_partially_bound: vk::TRUE,
+            ..Default::default()
+        };
+
+        let device_features = vk::PhysicalDeviceFeatures {
+            ..Default::default()
+        };
+
+        let create_info = vk::DeviceCreateInfo {
+            p_queue_create_infos: queue_infos.as_ptr(),
+            queue_create_info_count: queue_infos.len() as u32,
+            p_enabled_features: &device_features,
+            enabled_extension_count: extensions_raw_c_strings.len() as u32,
+            pp_enabled_extension_names: extensions_raw_c_strings.as_ptr(),
+            ..Default::default()
+        };
+
+        let logical_device = match unsafe { instance.instance.create_device(best_device_handle, &create_info, None) } {
+            Ok(device) => device,
+            Err(err) => {
+                println!("Error creating logical device {}", err);
+                return Err(DeviceInitError);
             }
         };
 
-        for physical_device_handle in physical_device_handles {
-            let properties = unsafe {
-                instance.instance.get_physical_device_properties(physical_device_handle)
-            };
+        let graphics_queue = unsafe {
+            logical_device.get_device_queue(device_queues.graphics_index.unwrap(), 0)
+        };
 
-            let device_name_u8_bytes = properties.device_name.iter()
-                .map(|&c| c as u8)
-                .filter(|&x| x > 0)
-                .collect();
-
-            println!("\t Found Device: {:?}", String::from_utf8(device_name_u8_bytes).unwrap());
-            println!("\t\t Device Type: {:?}", properties.device_type);
-            println!("\t\t Device Index Limit: {:?}", properties.limits.max_draw_indexed_index_value);
-        }
+        let presentation_queue = unsafe {
+            logical_device.get_device_queue(device_queues.presentation_index.unwrap(), 0)
+        };
 
         Ok ( Self {
             instance: instance,
+            physical_device: best_device_handle,
+            device: logical_device,
+            queues: DeviceQueueMetadata {
+                graphics_index: device_queues.graphics_index.unwrap(),
+                graphics_queue: graphics_queue,
+                presentation_index: device_queues.presentation_index.unwrap(),
+                presentation_queue: presentation_queue,
+            },
         } )
     }
 }

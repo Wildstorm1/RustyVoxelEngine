@@ -5,7 +5,7 @@
 use crate::graphics::vulkan::utils::{c_string_or_error};
 use std::ffi::{ CStr};
 use std::collections::HashSet;
-use ash::{vk, Entry, Instance};
+use ash::{vk, khr, Entry, Instance};
 use sdl3::sys::{vulkan};
 use sdl3::video::Window;
 
@@ -20,6 +20,7 @@ pub struct InstanceInitError;
  */
 pub struct VulkanInstance {
     pub instance: Instance,
+    pub surface: khr::surface::Instance
 }
 
 impl VulkanInstance {
@@ -91,8 +92,11 @@ impl VulkanInstance {
             entry.create_instance(&create_info, None).unwrap()
         };
 
+        let surface_instance = khr::surface::Instance::new(&entry, &instance);
+
         Ok( Self {
             instance: instance,
+            surface: surface_instance
         } )
     }
 }
