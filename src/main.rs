@@ -18,7 +18,7 @@ fn main() {
     let window = video_subsystem
         .window("Settle And Survive", 800, 600)
         .position_centered()
-        .set_flags(WindowFlags::VULKAN)
+        .set_flags(WindowFlags::VULKAN | WindowFlags::RESIZABLE)
         .build()
         .map_err(|e| e.to_string())
         .unwrap();
