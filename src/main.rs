@@ -23,15 +23,17 @@ fn main() {
         .map_err(|e| e.to_string())
         .unwrap();
 
-    let device = unsafe { match graphics::vulkan::device::VulkanDevice::new(&window) {
+    /*
+    let device = unsafe { match graphics::vulkan::hardware::device::VulkanDevice::new(&window) {
         Ok(device) => device,
         Err(err) => { println!("Error creating vulkan device {:?}", err); return; }
     } };
 
-    let swap_chain = unsafe { match graphics::vulkan::swapchain::VulkanSwapchain::new(&device, &window) {
+    let swap_chain = unsafe { match graphics::vulkan::hardware::swapchain::VulkanSwapchain::new(&device, &window) {
         Ok(swap_chain) => swap_chain,
         Err(err) => { println!("Error creating vulkan swapchain {:?}", err); return; }
     } };
+    */
 
     let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string()).unwrap();
 

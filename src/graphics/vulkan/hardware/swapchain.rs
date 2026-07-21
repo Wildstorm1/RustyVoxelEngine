@@ -2,8 +2,8 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use crate::graphics::vulkan::instance::{VulkanInstance};
-use crate::graphics::vulkan::device::{VulkanDevice};
+use super::instance::{VulkanInstance};
+use super::device::{VulkanDevice};
 use ash::{vk};
 use sdl3::video::Window;
 use std::ptr;
