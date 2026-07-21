@@ -22,6 +22,7 @@ pub struct VulkanSwapchain {
     swap_chain_images: Vec<vk::Image>,
     swap_chain_image_format: vk::Format,
     swap_chain_extent: vk::Extent2D,
+    swap_chain_image_views: Vec<vk::ImageView>,
 }
 
 fn choose_swap_surface_format(
@@ -142,6 +143,48 @@ fn choose_transform(
     Ok(capabilities.current_transform)
 }
 
+fn create_image_views(
+    device: &VulkanDevice,
+    swap_chain_images: &Vec<vk::Image>,
+    swap_chain_image_format: vk::Format
+) -> Result<Vec<vk::ImageView>, SwapchainInitError> {
+    let mut image_views = Vec::new();
+
+    for image in swap_chain_images {
+        let image_view_create_info = vk::ImageViewCreateInfo {
+            image: *image,
+            view_type: vk::ImageViewType::TYPE_2D,
+            format: swap_chain_image_format,
+            components: vk::ComponentMapping {
+                r: vk::ComponentSwizzle::IDENTITY,
+                g: vk::ComponentSwizzle::IDENTITY,
+                b: vk::ComponentSwizzle::IDENTITY,
+                a: vk::ComponentSwizzle::IDENTITY,
+            },
+            subresource_range: vk::ImageSubresourceRange {
+                aspect_mask: vk::ImageAspectFlags::COLOR,
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 0,
+                layer_count: 1,
+            },
+            ..Default::default()
+        };
+
+        let image_view = match unsafe { device.device.create_image_view(&image_view_create_info, None) } {
+            Ok(image_view) => image_view,
+            Err(err) => {
+                println!("Error creating image view for swapchain image {}", err);
+                return Err(SwapchainInitError)
+            },
+        };
+
+        image_views.push(image_view);
+    }
+
+    Ok(image_views)
+}
+
 impl VulkanSwapchain {
     pub unsafe fn new(
         device: &VulkanDevice,
@@ -196,11 +239,14 @@ impl VulkanSwapchain {
             }
         };
 
+        let image_views = create_image_views(device, &swapchain_images, surface_format.format)?;
+
         Ok( Self {
             swap_chain: swapchain,
             swap_chain_images: swapchain_images,
             swap_chain_image_format: surface_format.format,
             swap_chain_extent: extent,
+            swap_chain_image_views: image_views,
         } )
     }
 }
