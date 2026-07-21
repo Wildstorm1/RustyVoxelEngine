@@ -4,8 +4,8 @@
 
 use crate::graphics::vulkan::instance::{VulkanInstance};
 use std::collections::{HashMap, HashSet};
-use std::ffi::{CStr, CString};
-use ash::{vk, Device};
+use std::ffi::{CStr, CString, c_void};
+use ash::{vk, khr, Device};
 use sdl3::video::Window;
 
 /*
@@ -26,9 +26,9 @@ struct DeviceQueueIndexes {
  * List of indices for relevant device queues
  */
 pub struct DeviceQueueMetadata {
-    graphics_index: u32,
+    pub graphics_index: u32,
     graphics_queue: vk::Queue,
-    presentation_index: u32,
+    pub presentation_index: u32,
     presentation_queue: vk::Queue,
 }
 
@@ -36,10 +36,12 @@ pub struct DeviceQueueMetadata {
  * App specific device wrapper around vulkan
  */
 pub struct VulkanDevice {
-    instance: VulkanInstance,
-    physical_device: vk::PhysicalDevice,
-    device: Device,
-    queues: DeviceQueueMetadata,
+    pub instance: VulkanInstance,
+    pub physical_device: vk::PhysicalDevice,
+    pub surface: vk::SurfaceKHR,
+    pub device: Device,
+    pub queues: DeviceQueueMetadata,
+    pub swapchain_extension: khr::swapchain::Device,
 }
 
 fn device_supports_extensions(
@@ -153,7 +155,7 @@ fn select_physical_device(
             instance.instance.get_physical_device_properties(*physical_device_handle)
         };
 
-        let features = unsafe {
+        let _features = unsafe {
             instance.instance.get_physical_device_features(*physical_device_handle)
         };
 
@@ -277,6 +279,7 @@ impl VulkanDevice {
             p_enabled_features: &device_features,
             enabled_extension_count: extensions_raw_c_strings.len() as u32,
             pp_enabled_extension_names: extensions_raw_c_strings.as_ptr(),
+            p_next: (&raw const descriptor_indexing_features) as *const c_void,
             ..Default::default()
         };
 
@@ -296,10 +299,14 @@ impl VulkanDevice {
             logical_device.get_device_queue(device_queues.presentation_index.unwrap(), 0)
         };
 
+        let swapchain_device = khr::swapchain::Device::new(&instance.instance, &logical_device);
+
         Ok ( Self {
             instance: instance,
             physical_device: best_device_handle,
+            surface: surface_handle,
             device: logical_device,
+            swapchain_extension: swapchain_device,
             queues: DeviceQueueMetadata {
                 graphics_index: device_queues.graphics_index.unwrap(),
                 graphics_queue: graphics_queue,

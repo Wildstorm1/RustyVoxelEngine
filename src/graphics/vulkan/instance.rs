@@ -7,7 +7,6 @@ use std::ffi::{ CStr};
 use std::collections::HashSet;
 use ash::{vk, khr, Entry, Instance};
 use sdl3::sys::{vulkan};
-use sdl3::video::Window;
 
 /*
  * Simple struct for initialization error

@@ -24,8 +24,13 @@ fn main() {
         .unwrap();
 
     let device = unsafe { match graphics::vulkan::device::VulkanDevice::new(&window) {
-        Ok(value) => value,
-        Err(_) => { println!("hi"); return; }
+        Ok(device) => device,
+        Err(err) => { println!("Error creating vulkan device {:?}", err); return; }
+    } };
+
+    let swap_chain = unsafe { match graphics::vulkan::swapchain::VulkanSwapchain::new(&device, &window) {
+        Ok(swap_chain) => swap_chain,
+        Err(err) => { println!("Error creating vulkan swapchain {:?}", err); return; }
     } };
 
     let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string()).unwrap();
