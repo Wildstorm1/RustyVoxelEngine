@@ -18,8 +18,8 @@ pub struct InstanceInitError;
  * App specific instance of vulkan
  */
 pub struct VulkanInstance {
-    pub instance: Instance,
-    pub surface: khr::surface::Instance
+    pub(super) instance: Instance,
+    pub(super) surface: khr::surface::Instance
 }
 
 impl VulkanInstance {

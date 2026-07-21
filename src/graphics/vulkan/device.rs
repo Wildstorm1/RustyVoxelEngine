@@ -26,9 +26,9 @@ struct DeviceQueueIndexes {
  * List of indices for relevant device queues
  */
 pub struct DeviceQueueMetadata {
-    pub graphics_index: u32,
+    pub(super) graphics_index: u32,
     graphics_queue: vk::Queue,
-    pub presentation_index: u32,
+    pub(super) presentation_index: u32,
     presentation_queue: vk::Queue,
 }
 
@@ -36,12 +36,12 @@ pub struct DeviceQueueMetadata {
  * App specific device wrapper around vulkan
  */
 pub struct VulkanDevice {
-    pub instance: VulkanInstance,
-    pub physical_device: vk::PhysicalDevice,
-    pub surface: vk::SurfaceKHR,
-    pub device: Device,
-    pub queues: DeviceQueueMetadata,
-    pub swapchain_extension: khr::swapchain::Device,
+    pub(super) instance: VulkanInstance,
+    pub(super) physical_device: vk::PhysicalDevice,
+    pub(super) surface: vk::SurfaceKHR,
+    pub(super) device: Device,
+    pub(super) queues: DeviceQueueMetadata,
+    pub(super) swapchain_extension: khr::swapchain::Device,
 }
 
 fn device_supports_extensions(

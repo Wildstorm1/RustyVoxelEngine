@@ -18,11 +18,11 @@ pub struct SwapchainInitError;
  * App specific swapchain wrapper around vulkan
  */
 pub struct VulkanSwapchain {
-    swap_chain: vk::SwapchainKHR,
-    swap_chain_images: Vec<vk::Image>,
-    swap_chain_image_format: vk::Format,
-    swap_chain_extent: vk::Extent2D,
-    swap_chain_image_views: Vec<vk::ImageView>,
+    pub(super) swap_chain: vk::SwapchainKHR,
+    pub(super) swap_chain_images: Vec<vk::Image>,
+    pub(super) swap_chain_image_format: vk::Format,
+    pub(super) swap_chain_extent: vk::Extent2D,
+    pub(super) swap_chain_image_views: Vec<vk::ImageView>,
 }
 
 fn choose_swap_surface_format(
