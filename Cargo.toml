@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 sdl3 = { version = "0.18.4", features = [ "build-from-source", "ash" ] }
 ash = { version = "0.38.0", features = [ "linked" ] }
+glm = { version = "0.3.0" }

@@ -26,9 +26,9 @@ struct DeviceQueueIndexes {
  * List of indices for relevant device queues
  */
 pub struct DeviceQueueMetadata {
-    pub(super) graphics_index: u32,
+    pub graphics_index: u32,
     graphics_queue: vk::Queue,
-    pub(super) presentation_index: u32,
+    pub presentation_index: u32,
     presentation_queue: vk::Queue,
 }
 
@@ -36,12 +36,16 @@ pub struct DeviceQueueMetadata {
  * App specific device wrapper around vulkan
  */
 pub struct VulkanDevice {
-    pub(super) instance: VulkanInstance,
-    pub(super) physical_device: vk::PhysicalDevice,
-    pub(super) surface: vk::SurfaceKHR,
-    pub(super) device: Device,
-    pub(super) queues: DeviceQueueMetadata,
-    pub(super) swapchain_extension: khr::swapchain::Device,
+    pub instance: VulkanInstance,
+    pub physical_device: vk::PhysicalDevice,
+    pub surface: vk::SurfaceKHR,
+    pub device: Device,
+    pub queues: DeviceQueueMetadata,
+    pub swapchain_extension: khr::swapchain::Device,
+    pub command_pool: vk::CommandPool,
+    pub descriptor_pool: vk::DescriptorPool,
+    pub descriptor_set_layout: vk::DescriptorSetLayout,
+    pub descriptor_sets: Vec<vk::DescriptorSet>,
 }
 
 fn device_supports_extensions(
@@ -205,6 +209,86 @@ fn select_physical_device(
     Ok(best_device_handle)
 }
 
+fn create_descriptor_set_resources(
+    device: &Device,
+) -> Result<(
+    vk::DescriptorPool,
+    vk::DescriptorSetLayout,
+    Vec<vk::DescriptorSet>
+), DeviceInitError> {
+    let descriptor_pool_size = vk::DescriptorPoolSize {
+        descriptor_count: 2, // TODO: 1 per frame in flight magic number
+        ..Default::default()
+    };
+
+    let descriptor_pool_create_info = vk::DescriptorPoolCreateInfo {
+        pool_size_count: 1,
+        p_pool_sizes: &descriptor_pool_size,
+        flags: vk::DescriptorPoolCreateFlags::UPDATE_AFTER_BIND,
+        max_sets: 2, // TODO: 1 per frame in flight magic number
+        ..Default::default()
+    };
+
+    let descriptor_pool = match unsafe { device.create_descriptor_pool(&descriptor_pool_create_info, None) } {
+        Ok(descriptor_pool) => descriptor_pool,
+        Err(err) => {
+            println!("Error creating descriptor pool {}", err);
+            return Err(DeviceInitError);
+        }
+    };
+
+    let flags = [ vk::DescriptorBindingFlags::PARTIALLY_BOUND ];
+
+    let binding_flags = vk::DescriptorSetLayoutBindingFlagsCreateInfo {
+        p_binding_flags: flags.as_ptr(),
+        binding_count: 1,
+        ..Default::default()
+    };
+
+    let ubo_layout_binding = vk::DescriptorSetLayoutBinding {
+        binding: 0,
+        descriptor_type: vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
+        descriptor_count: 1,
+        stage_flags: vk::ShaderStageFlags::VERTEX,
+        ..Default::default()
+    };
+
+    let layout_info = vk::DescriptorSetLayoutCreateInfo {
+        binding_count: 1,
+        flags: vk::DescriptorSetLayoutCreateFlags::UPDATE_AFTER_BIND_POOL,
+        p_bindings: &ubo_layout_binding,
+        p_next: (&raw const binding_flags) as *const c_void,
+        ..Default::default()
+    };
+
+    let descriptor_set_layout = match unsafe { device.create_descriptor_set_layout(&layout_info, None) } {
+        Ok(descriptor_set_layout) => descriptor_set_layout,
+        Err(err) => {
+            println!("Error creating descriptor pool layout {}", err);
+            return Err(DeviceInitError);
+        }
+    };
+
+    let layouts = [ descriptor_set_layout, descriptor_set_layout ];
+
+    let dset_alloc_info = vk::DescriptorSetAllocateInfo {
+        descriptor_pool: descriptor_pool,
+        descriptor_set_count: 2, // TODO: 1 per frame in flight magic number
+        p_set_layouts: layouts.as_ptr(),
+        ..Default::default()
+    };
+
+    let descriptor_sets = match unsafe { device.allocate_descriptor_sets(&dset_alloc_info) } {
+        Ok(descriptor_sets) => descriptor_sets,
+        Err(err) => {
+            println!("Error creating descriptor sets {}", err);
+            return Err(DeviceInitError);
+        }
+    };
+
+    Ok((descriptor_pool, descriptor_set_layout, descriptor_sets))
+}
+
 impl VulkanDevice {
     pub unsafe fn new(window: &Window) -> Result<Self, DeviceInitError> {
         println!("Starting vulkan device setup");
@@ -301,6 +385,22 @@ impl VulkanDevice {
 
         let swapchain_device = khr::swapchain::Device::new(&instance.instance, &logical_device);
 
+        let command_pool_info = vk::CommandPoolCreateInfo {
+            flags: vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER,
+            queue_family_index: device_queues.graphics_index.unwrap(),
+            ..Default::default()
+        };
+
+        let command_pool = match unsafe { logical_device.create_command_pool(&command_pool_info, None) } {
+            Ok(command_pool) => command_pool,
+            Err(err) => {
+                println!("Error creating command pool {}", err);
+                return Err(DeviceInitError);
+            },
+        };
+
+        let (descriptor_pool, descriptor_set_layout, descriptor_sets) = create_descriptor_set_resources(&logical_device)?;
+
         Ok ( Self {
             instance: instance,
             physical_device: best_device_handle,
@@ -313,6 +413,10 @@ impl VulkanDevice {
                 presentation_index: device_queues.presentation_index.unwrap(),
                 presentation_queue: presentation_queue,
             },
+            command_pool: command_pool,
+            descriptor_pool: descriptor_pool,
+            descriptor_set_layout: descriptor_set_layout,
+            descriptor_sets: descriptor_sets,
         } )
     }
 }

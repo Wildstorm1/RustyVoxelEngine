@@ -2,6 +2,8 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
+use crate::graphics::renderer;
+
 use sdl3::{pixels::Color, video::WindowFlags};
 use sdl3::event::Event;
 use sdl3::keyboard::Keycode;
@@ -23,17 +25,7 @@ fn main() {
         .map_err(|e| e.to_string())
         .unwrap();
 
-    /*
-    let device = unsafe { match graphics::vulkan::hardware::device::VulkanDevice::new(&window) {
-        Ok(device) => device,
-        Err(err) => { println!("Error creating vulkan device {:?}", err); return; }
-    } };
-
-    let swap_chain = unsafe { match graphics::vulkan::hardware::swapchain::VulkanSwapchain::new(&device, &window) {
-        Ok(swap_chain) => swap_chain,
-        Err(err) => { println!("Error creating vulkan swapchain {:?}", err); return; }
-    } };
-    */
+    renderer::test(&window);
 
     let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string()).unwrap();
 
