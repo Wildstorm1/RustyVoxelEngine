@@ -5,3 +5,4 @@
 pub(super) mod hardware;
 pub mod context;
 pub mod command_buffer;
+pub mod resources;

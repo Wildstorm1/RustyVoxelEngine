@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use super::context::Buffer;
+use super::resources::{ Buffer, Uniform };
 use std::fmt;
 
 /*
@@ -11,6 +11,7 @@ use std::fmt;
 pub struct DrawIndexedPacket {
     pub vertex: Buffer,
     pub index: Buffer,
+    pub uniform: Uniform,
     pub vertex_offset: u64,
     pub index_offset: u64,
     pub size: u64,

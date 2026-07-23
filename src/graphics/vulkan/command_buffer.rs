@@ -65,6 +65,7 @@ fn push_draw_indexed(
     command_buffer: vk::CommandBuffer,
     packet: DrawIndexedPacket
 ) -> Result<(), CommandBufferError> {
+    /*
     let vertex_buffer = match context.get_vulkan_buffer_handle(packet.vertex) {
         Ok(vertex_buffer) => match vertex_buffer {
             Some(buffer) => buffer,
@@ -92,7 +93,9 @@ fn push_draw_indexed(
             return Err(CommandBufferError);
         }
     };
+    */
 
+    /*
     unsafe { device.device.cmd_bind_vertex_buffers(
         command_buffer, 0, &[vertex_buffer], &[0]
     ) };
@@ -100,6 +103,7 @@ fn push_draw_indexed(
     unsafe { device.device.cmd_bind_index_buffer(
         command_buffer, index_buffer, 0, vk::IndexType::UINT32
     ) };
+    */
 
     //self.device.device.cmd_bind_descriptor_sets(command_buffer, pipeline_bind_point, layout, first_set, descriptor_sets, dynamic_offsets);
     //self.device.device.cmd_draw_indexed(command_buffer, index_count, instance_count, first_index, vertex_offset, first_instance);

@@ -217,6 +217,7 @@ fn create_descriptor_set_resources(
     Vec<vk::DescriptorSet>
 ), DeviceInitError> {
     let descriptor_pool_size = vk::DescriptorPoolSize {
+        ty: vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
         descriptor_count: 2, // TODO: 1 per frame in flight magic number
         ..Default::default()
     };
@@ -418,5 +419,25 @@ impl VulkanDevice {
             descriptor_set_layout: descriptor_set_layout,
             descriptor_sets: descriptor_sets,
         } )
+    }
+}
+
+impl Drop for VulkanDevice {
+    fn drop(&mut self) {
+        unsafe {
+            self.device.destroy_descriptor_pool(self.descriptor_pool, None);
+        }
+
+        unsafe {
+            self.device.destroy_descriptor_set_layout(self.descriptor_set_layout, None);
+        }
+
+        unsafe {
+            self.device.destroy_device(None);
+        }
+
+        unsafe {
+            self.instance.surface.destroy_surface(self.surface, None);
+        }
     }
 }
