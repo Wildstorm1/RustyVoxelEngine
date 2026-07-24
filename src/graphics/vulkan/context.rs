@@ -8,14 +8,12 @@ use super::super::hal::context::{
 use super::super::hal::resources::{
     Buffer, Uniform
 };
-use super::resources::{ 
-    VulkanResources
-};
-use super::command_buffer::{
-    VulkanCommandBuffer
-};
+use super::resources::{ VulkanResources };
+use super::command_buffer::{ VulkanCommandBuffer };
 use super::hardware::device::{ VulkanDevice };
 use super::hardware::swapchain::{ VulkanSwapchain };
+use super::application::render_pass::{ VulkanRenderPass };
+use sdl3::sys::metadata::render;
 use sdl3::video::Window;
 use std::collections::{ HashMap };
 use std::ffi::{ c_void };
@@ -30,6 +28,7 @@ pub struct VulkanContext<'a> {
     device: Arc<VulkanDevice>,
     swapchain: VulkanSwapchain,
     resources: VulkanResources,
+    render_pass: VulkanRenderPass,
     _lifetime: PhantomData<&'a ()>
 }
 
@@ -43,7 +42,7 @@ impl <'a> VulkanContext<'a> {
             }
         } };
 
-        let swap_chain = unsafe { match VulkanSwapchain::new(&device, &window) {
+        let swap_chain = unsafe { match VulkanSwapchain::new(device.clone(), &window) {
             Ok(swap_chain) => swap_chain,
             Err(err) => {
                 println!("Error creating vulkan swapchain {:?}", err);
@@ -59,10 +58,19 @@ impl <'a> VulkanContext<'a> {
             }
         };
 
+        let render_pass = match VulkanRenderPass::new(device.clone(), &swap_chain) {
+            Ok(render_pass) => render_pass,
+            Err(err) => {
+                println!("Error creating vulkan render pass {:?}", err);
+                return Err(ContextError);
+            }
+        };
+
         Ok( Self {
             device: device,
             swapchain: swap_chain,
             resources: resources,
+            render_pass: render_pass,
             _lifetime: PhantomData
         } )
     }

@@ -2,10 +2,11 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use super::instance::{VulkanInstance};
-use super::device::{VulkanDevice};
-use ash::{vk};
+use super::instance::{ VulkanInstance };
+use super::device::{ VulkanDevice };
+use ash::{ vk };
 use sdl3::video::Window;
+use std::sync::{ Arc };
 use std::ptr;
 
 /*
@@ -18,11 +19,12 @@ pub struct SwapchainInitError;
  * App specific swapchain wrapper around vulkan
  */
 pub struct VulkanSwapchain {
-    pub(super) swap_chain: vk::SwapchainKHR,
-    pub(super) swap_chain_images: Vec<vk::Image>,
-    pub(super) swap_chain_image_format: vk::Format,
-    pub(super) swap_chain_extent: vk::Extent2D,
-    pub(super) swap_chain_image_views: Vec<vk::ImageView>,
+    pub device: Arc<VulkanDevice>,
+    pub swap_chain: vk::SwapchainKHR,
+    pub swap_chain_images: Vec<vk::Image>,
+    pub swap_chain_image_format: vk::Format,
+    pub swap_chain_extent: vk::Extent2D,
+    pub swap_chain_image_views: Vec<vk::ImageView>,
 }
 
 fn choose_swap_surface_format(
@@ -144,7 +146,7 @@ fn choose_transform(
 }
 
 fn create_image_views(
-    device: &VulkanDevice,
+    device: Arc<VulkanDevice>,
     swap_chain_images: &Vec<vk::Image>,
     swap_chain_image_format: vk::Format
 ) -> Result<Vec<vk::ImageView>, SwapchainInitError> {
@@ -187,7 +189,7 @@ fn create_image_views(
 
 impl VulkanSwapchain {
     pub unsafe fn new(
-        device: &VulkanDevice,
+        device: Arc<VulkanDevice>,
         window: &Window
     ) -> Result<Self, SwapchainInitError> {
         let surface_format = choose_swap_surface_format(&device.instance, device.physical_device, device.surface)?;
@@ -239,14 +241,28 @@ impl VulkanSwapchain {
             }
         };
 
-        let image_views = create_image_views(device, &swapchain_images, surface_format.format)?;
+        let image_views = create_image_views(device.clone(), &swapchain_images, surface_format.format)?;
 
         Ok( Self {
+            device: device,
             swap_chain: swapchain,
             swap_chain_images: swapchain_images,
             swap_chain_image_format: surface_format.format,
             swap_chain_extent: extent,
             swap_chain_image_views: image_views,
         } )
+    }
+}
+
+
+impl Drop for VulkanSwapchain {
+    fn drop(&mut self) {
+        unsafe {
+            self.swap_chain_image_views.iter().for_each(|view| {
+                self.device.device.destroy_image_view(*view, None);
+            });
+
+            self.device.swapchain_extension.destroy_swapchain(self.swap_chain, None);
+        }
     }
 }

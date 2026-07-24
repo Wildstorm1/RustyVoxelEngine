@@ -426,17 +426,9 @@ impl Drop for VulkanDevice {
     fn drop(&mut self) {
         unsafe {
             self.device.destroy_descriptor_pool(self.descriptor_pool, None);
-        }
-
-        unsafe {
+            self.device.destroy_command_pool(self.command_pool, None);
             self.device.destroy_descriptor_set_layout(self.descriptor_set_layout, None);
-        }
-
-        unsafe {
             self.device.destroy_device(None);
-        }
-
-        unsafe {
             self.instance.surface.destroy_surface(self.surface, None);
         }
     }
