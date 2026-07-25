@@ -13,6 +13,7 @@ use super::command_buffer::{ VulkanCommandBuffer };
 use super::hardware::device::{ VulkanDevice };
 use super::hardware::swapchain::{ VulkanSwapchain };
 use super::application::render_pass::{ VulkanRenderPass };
+use super::application::pipeline::{ VulkanPipeline };
 use sdl3::sys::metadata::render;
 use sdl3::video::Window;
 use std::collections::{ HashMap };
@@ -29,6 +30,7 @@ pub struct VulkanContext<'a> {
     swapchain: VulkanSwapchain,
     resources: VulkanResources,
     render_pass: VulkanRenderPass,
+    pipeline: VulkanPipeline,
     _lifetime: PhantomData<&'a ()>
 }
 
@@ -66,11 +68,20 @@ impl <'a> VulkanContext<'a> {
             }
         };
 
+        let pipeline = match VulkanPipeline::new(device.clone(), &swap_chain, &render_pass) {
+            Ok(pipeline) => pipeline,
+            Err(err) => {
+                println!("Error creating vulkan pipeline {:?}", err);
+                return Err(ContextError);
+            }
+        };
+
         Ok( Self {
             device: device,
             swapchain: swap_chain,
             resources: resources,
             render_pass: render_pass,
+            pipeline: pipeline,
             _lifetime: PhantomData
         } )
     }

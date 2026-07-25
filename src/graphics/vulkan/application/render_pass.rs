@@ -21,7 +21,7 @@ pub struct VulkanRenderPass {
     depth_image: vk::Image,
     depth_memory: vk::DeviceMemory,
     depth_view: vk::ImageView,
-    render_pass: vk::RenderPass,
+    pub render_pass: vk::RenderPass,
     frame_buffers: Vec<vk::Framebuffer>,
     frame_buffer_semaphore: Vec<vk::Semaphore>
 }
