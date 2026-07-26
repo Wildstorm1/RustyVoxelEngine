@@ -5,8 +5,8 @@
 use super::super::hal::command_buffer::{
     CommandBuffer, CommandBufferError, DrawIndexedPacket, CopyBufferPacket
 };
-use super::context::{ VulkanContext };
 use super::hardware::device::{ VulkanDevice };
+use std::sync::Arc;
 use ash::{ vk };
 
 /*
@@ -21,18 +21,16 @@ enum InstructionPacket {
 /*
  * Vulkan implementation of command buffer
  */
-pub struct VulkanCommandBuffer<'a> {
-    device: &'a VulkanDevice,
-    context: &'a VulkanContext<'a>,
+pub struct VulkanCommandBuffer {
+    device: Arc<VulkanDevice>,
     command_buffer: vk::CommandBuffer,
     buffer: Vec<InstructionPacket>,
     invalidated: bool,
 }
 
-impl <'a> VulkanCommandBuffer<'a> {
+impl VulkanCommandBuffer {
     pub fn new(
-        device: &'a VulkanDevice,
-        context: &'a VulkanContext<'a>
+        device: Arc<VulkanDevice>
     ) -> Result<Self, CommandBufferError> {
         let allocate_info = vk::CommandBufferAllocateInfo {
             command_pool: device.command_pool,
@@ -51,7 +49,6 @@ impl <'a> VulkanCommandBuffer<'a> {
 
         Ok( Self {
             device: device,
-            context: context,
             command_buffer: command_buffer[0],
             buffer: Vec::new(),
             invalidated: true,
@@ -60,8 +57,7 @@ impl <'a> VulkanCommandBuffer<'a> {
 }
 
 fn push_draw_indexed(
-    device: &VulkanDevice,
-    context: &VulkanContext,
+    device: Arc<VulkanDevice>,
     command_buffer: vk::CommandBuffer,
     packet: DrawIndexedPacket
 ) -> Result<(), CommandBufferError> {
@@ -112,15 +108,14 @@ fn push_draw_indexed(
 }
 
 fn push_copy_buffer(
-    device: &VulkanDevice,
-    context: &VulkanContext,
+    device: Arc<VulkanDevice>,
     command_buffer: vk::CommandBuffer,
     packet: CopyBufferPacket
 ) -> Result<(), CommandBufferError> {
     Ok(())
 }
 
-impl <'a> CommandBuffer for VulkanCommandBuffer<'a> {
+impl CommandBuffer for VulkanCommandBuffer {
     fn draw_indexed(&mut self, packet: DrawIndexedPacket) -> Result<(), CommandBufferError> {
         if self.invalidated {
             return Err(CommandBufferError);
@@ -151,8 +146,8 @@ impl <'a> CommandBuffer for VulkanCommandBuffer<'a> {
 
         for packet in elements {
             match packet {
-                InstructionPacket::DrawIndexed(packet) => push_draw_indexed(self.device, self.context, self.command_buffer, packet)?,
-                InstructionPacket::CopyBuffer(packet) => push_copy_buffer(self.device, self.context, self.command_buffer, packet)?,
+                InstructionPacket::DrawIndexed(packet) => push_draw_indexed(self.device.clone(), self.command_buffer, packet)?,
+                InstructionPacket::CopyBuffer(packet) => push_copy_buffer(self.device.clone(), self.command_buffer, packet)?,
             }
         }
 

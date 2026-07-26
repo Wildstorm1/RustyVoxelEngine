@@ -4,3 +4,4 @@
 
 pub mod render_pass;
 pub mod pipeline;
+pub mod resources;

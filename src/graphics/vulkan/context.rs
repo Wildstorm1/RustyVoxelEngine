@@ -3,38 +3,32 @@
  */
 
 use super::super::hal::context::{
-    Context, ContextError, CommandBufferArgs
+    Context, ContextError
 };
-use super::super::hal::resources::{
-    Buffer, Uniform
-};
-use super::resources::{ VulkanResources };
-use super::command_buffer::{ VulkanCommandBuffer };
+use super::application::resources::{ VulkanResources };
+use super::frame_resources::{ VulkanFrameResources };
 use super::hardware::device::{ VulkanDevice };
 use super::hardware::swapchain::{ VulkanSwapchain };
 use super::application::render_pass::{ VulkanRenderPass };
 use super::application::pipeline::{ VulkanPipeline };
-use sdl3::sys::metadata::render;
+use super::frame::VulkanFrame;
 use sdl3::video::Window;
-use std::collections::{ HashMap };
-use std::ffi::{ c_void };
-use std::marker::{ PhantomData };
-use std::sync::{ Arc, RwLock };
-use ash::{ vk };
+use std::sync::{ Arc };
 
 /*
  * Vulkan implementation of context
  */
-pub struct VulkanContext<'a> {
+pub struct VulkanContext {
     device: Arc<VulkanDevice>,
     swapchain: VulkanSwapchain,
-    resources: VulkanResources,
+    resources: Arc<VulkanResources>,
     render_pass: VulkanRenderPass,
     pipeline: VulkanPipeline,
-    _lifetime: PhantomData<&'a ()>
+    frame_number: usize,
+    frames: Vec<Arc<VulkanFrame>>,
 }
 
-impl <'a> VulkanContext<'a> {
+impl VulkanContext {
     pub fn new(window: &Window) -> Result<Self, ContextError> {
         let device = unsafe { match VulkanDevice::new(&window) {
             Ok(device) => Arc::new(device),
@@ -76,49 +70,35 @@ impl <'a> VulkanContext<'a> {
             }
         };
 
+        let resources = Arc::new(resources);
+        let mut frames = Vec::new();
+
+        // TODO: Magic 2 for 2 frames in flight
+        for i in 0..2 {
+            let frame_resources = VulkanFrameResources::new(resources.clone(), i);
+            frames.push(Arc::new(VulkanFrame::new(device.clone(), frame_resources)));
+        }
+
         Ok( Self {
             device: device,
             swapchain: swap_chain,
             resources: resources,
             render_pass: render_pass,
             pipeline: pipeline,
-            _lifetime: PhantomData
+            frame_number: 0,
+            frames: frames,
         } )
     }
 }
 
-impl <'a> Context<'a> for VulkanContext<'a> {
-    type T = VulkanCommandBuffer<'a>;
+impl Context for VulkanContext {
+    type T = VulkanFrame;
 
-    type E = VulkanResources;
+    fn next_frame(&mut self) -> Result<Arc<Self::T>, ContextError> {
+        // TODO: Manual 2 for 2 frames "in flight"
+        let frame = self.frames[self.frame_number].clone();
+        self.frame_number = (self.frame_number + 1) % 2;
 
-    fn get_resources(&'a self) -> Result<&'a Self::E, ContextError> {
-        Ok(&self.resources)
-    }
-
-    fn create_command_buffer(&'a self, args: CommandBufferArgs) -> Result<Self::T, ContextError> {
-        match VulkanCommandBuffer::new(&self.device, self) {
-            Ok(command_buffer) => Ok(command_buffer),
-            Err(err) => {
-                println!("Error creating command buffer {}", err);
-                return Err(ContextError);
-            }
-        }
-    }
-
-    fn submit_command_buffer(&'a mut self, buffer: Self::T) -> Result<Self::T, ContextError> {
-        unimplemented!()
-    }
-
-    fn begin_frame(&'a mut self) {
-        unimplemented!()
-    }
-
-    fn end_frame(&'a mut self) {
-        unimplemented!()
-    }
-
-    fn present_frame(&'a mut self) {
-        unimplemented!()
+        Ok(frame)
     }
 }

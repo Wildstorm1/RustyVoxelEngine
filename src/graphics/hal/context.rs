@@ -2,8 +2,8 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use super::super::hal::resources::{ Resources };
-use super::command_buffer::{CommandBuffer};
+use super::frame::{ Frame };
+use std::sync::{ Arc };
 
 /*
  * Inputs needed for creating a command buffer
@@ -16,44 +16,14 @@ pub struct CommandBufferArgs {}
 #[derive(Debug)]
 pub struct ContextError;
 
-pub trait Context<'a> {
+pub trait Context {
     /*
      * The implementor must choose the type which is for the same backend
      */
-    type T: CommandBuffer;
+    type T: Frame;
 
     /*
-     * The implementor must choose the type which is for the same backend
+     * Returns the next frame for recording
      */
-    type E: Resources;
-
-    /*
-     * Creates a new buffer
-     */
-    fn get_resources(&'a self) -> Result<&'a Self::E, ContextError>;
-
-    /*
-     * Creates a new command buffer
-     */
-    fn create_command_buffer(&'a self, args: CommandBufferArgs) -> Result<Self::T, ContextError>;
-
-    /*
-     * Submits the given command buffer for processing
-     */
-    fn submit_command_buffer(&'a mut self, buffer: Self::T) -> Result<Self::T, ContextError>;
-
-    /*
-     * Begins a new frame for recording
-     */
-    fn begin_frame(&'a mut self);
-
-    /*
-     * Ends the current frame's recording
-     */
-    fn end_frame(&'a mut self);
-
-    /*
-     * Presents the current frame for display
-     */
-    fn present_frame(&'a mut self);
+    fn next_frame(&mut self) -> Result<Arc<Self::T>, ContextError>;
 }

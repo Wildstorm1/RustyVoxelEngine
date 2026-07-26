@@ -42,15 +42,15 @@ pub trait Resources {
     /*
      * Returns the large global vertex buffer
      */
-    fn get_vertex_buffer(&self) -> Result<Buffer, ResourcesError>;
+    fn get_vertex_buffer_handle(&self) -> Result<Buffer, ResourcesError>;
 
     /*
      * Returns the large global index buffer
      */
-    fn get_index_buffer(&self) -> Result<Buffer, ResourcesError>;
+    fn get_index_buffer_handle(&self) -> Result<Buffer, ResourcesError>;
 
     /*
      * Returns the large global model uniform buffer
      */
-    fn get_model_buffer(&self, frame: usize) -> Result<Uniform, ResourcesError>;
+    fn get_model_buffer_handle(&self) -> Result<Uniform, ResourcesError>;
 }

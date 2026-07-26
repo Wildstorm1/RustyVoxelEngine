@@ -2,10 +2,10 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use super::super::hal::resources::{
-    Resources, ResourcesError, Buffer, Uniform
+use super::super::super::hal::resources::{
+    ResourcesError, Buffer, Uniform
 };
-use super::hardware::device::{ VulkanDevice };
+use super::super::hardware::device::{ VulkanDevice };
 use std::ffi::{ c_void };
 use std::sync::{ Arc };
 use ash::{ vk };
@@ -188,25 +188,21 @@ impl VulkanResources {
             },
         })
     }
-}
 
-impl Resources for VulkanResources {
-    fn get_vertex_buffer(&self) -> Result<Buffer, ResourcesError> {
+    pub fn get_vertex_buffer_handle(&self) -> Result<Buffer, ResourcesError> {
         Ok(self.vertex_handle)
     }
 
-    fn get_index_buffer(&self) -> Result<Buffer, ResourcesError> {
+    pub fn get_index_buffer_handle(&self) -> Result<Buffer, ResourcesError> {
         Ok(self.index_handle)
     }
 
-    fn get_model_buffer(&self, frame: usize) -> Result<Uniform, ResourcesError> {
-        if frame == 1 {
-            Ok(self.frame1_uniform_handle)
-        } else if frame == 2 {
-            Ok(self.frame2_uniform_handle)
-        } else {
-            Err(ResourcesError)
-        }
+    pub fn get_model_buffer_frame1_handle(&self) -> Result<Uniform, ResourcesError> {
+        Ok(self.frame1_uniform_handle)
+    }
+
+    pub fn get_model_buffer_frame2_handle(&self) -> Result<Uniform, ResourcesError> {
+        Ok(self.frame2_uniform_handle)
     }
 }
 

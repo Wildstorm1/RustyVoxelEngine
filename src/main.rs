@@ -2,7 +2,8 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use crate::graphics::renderer;
+use crate::graphics::renderer::{ Renderer };
+use crate::graphics::{ CommandBuffer, Context, Resources, VulkanCommandBuffer, VulkanContext };
 
 use sdl3::{pixels::Color, video::WindowFlags};
 use sdl3::event::Event;
@@ -25,7 +26,15 @@ fn main() {
         .map_err(|e| e.to_string())
         .unwrap();
 
-    renderer::test(&window);
+    let context = match VulkanContext::new(&window) {
+        Ok(context) => Box::new(context),
+        Err(err) => {
+            println!("Error setting up context {:?}", err);
+            return;
+        }
+    };
+
+    let mut renderer = Renderer::new(context);
 
     let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string()).unwrap();
 
@@ -37,9 +46,12 @@ fn main() {
             }
         }
 
-        if window.is_maximized() {
-            println!("Keep window in scope");
+        match renderer.render() {
+            Ok(_) => (),
+            Err(err) => {
+                println!("Error rendering in main loop {:?}", err);
+                break 'running
+            }
         }
-        // App stuff
     }
 }
