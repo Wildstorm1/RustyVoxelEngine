@@ -36,7 +36,10 @@ impl <T: Context> Renderer<T> {
             RendererError
         })?;
 
-        frame.begin_frame();
+        frame.begin_frame().map_err(|err| {
+            println!("Error beginning frame {:?}", err);
+            RendererError
+        })?;
 
         let resources = frame.get_resources().map_err(|err| {
             println!("Error getting resources api {:?}", err);
@@ -66,8 +69,8 @@ impl <T: Context> Renderer<T> {
          * Draw commands
          */
 
-        frame.end_frame();
-        frame.present_frame();
+        //frame.end_frame();
+        //frame.present_frame();
 
         Ok(())
     }

@@ -19,7 +19,7 @@ pub struct SwapchainInitError;
  * App specific swapchain wrapper around vulkan
  */
 pub struct VulkanSwapchain {
-    pub device: Arc<VulkanDevice>,
+    device: Arc<VulkanDevice>,
     pub swap_chain: vk::SwapchainKHR,
     pub swap_chain_images: Vec<vk::Image>,
     pub swap_chain_image_format: vk::Format,

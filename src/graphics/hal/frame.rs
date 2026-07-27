@@ -46,15 +46,15 @@ pub trait Frame {
     /*
      * Ends the current frame's recording
      */
-    fn begin_frame(&self);
+    fn begin_frame(&self) -> Result<(), FrameError>;
 
     /*
      * Ends the current frame's recording
      */
-    fn end_frame(&self);
+    fn end_frame(&self) -> Result<(), FrameError>;
 
     /*
      * Presents the current frame for display
      */
-    fn present_frame(&self);
+    fn present_frame(&self) -> Result<(), FrameError>;
 }

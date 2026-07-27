@@ -26,7 +26,7 @@ pub struct PipelineError;
 pub struct VulkanPipeline {
     device: Arc<VulkanDevice>,
     pipeline_layout: vk::PipelineLayout,
-    pipeline: vk::Pipeline
+    pub pipeline: vk::Pipeline
 }
 
 struct ShaderDetails {
@@ -94,8 +94,8 @@ fn load_shaders(
 impl VulkanPipeline {
     pub fn new(
         device: Arc<VulkanDevice>,
-        swap_chain: &VulkanSwapchain,
-        render_pass: &VulkanRenderPass
+        swap_chain: Arc<VulkanSwapchain>,
+        render_pass: Arc<VulkanRenderPass>
     ) -> Result<Self, PipelineError> {
         let shaders = load_shaders(device.clone())?;
 

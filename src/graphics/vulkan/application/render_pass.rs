@@ -22,8 +22,8 @@ pub struct VulkanRenderPass {
     depth_memory: vk::DeviceMemory,
     depth_view: vk::ImageView,
     pub render_pass: vk::RenderPass,
-    frame_buffers: Vec<vk::Framebuffer>,
-    frame_buffer_semaphore: Vec<vk::Semaphore>
+    pub frame_buffers: Vec<vk::Framebuffer>,
+    pub frame_buffer_semaphore: Vec<vk::Semaphore>
 }
 
 fn find_supported_format(

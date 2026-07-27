@@ -27,9 +27,9 @@ struct DeviceQueueIndexes {
  */
 pub struct DeviceQueueMetadata {
     pub graphics_index: u32,
-    graphics_queue: vk::Queue,
+    pub graphics_queue: vk::Queue,
     pub presentation_index: u32,
-    presentation_queue: vk::Queue,
+    pub presentation_queue: vk::Queue,
 }
 
 /*

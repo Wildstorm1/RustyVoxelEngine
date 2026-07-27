@@ -2,6 +2,8 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
+use crate::graphics::vulkan::application::{pipeline, render_pass};
+
 use super::super::hal::context::{
     Context, ContextError
 };
@@ -20,10 +22,10 @@ use std::sync::{ Arc };
  */
 pub struct VulkanContext {
     device: Arc<VulkanDevice>,
-    swapchain: VulkanSwapchain,
+    swapchain: Arc<VulkanSwapchain>,
     resources: Arc<VulkanResources>,
-    render_pass: VulkanRenderPass,
-    pipeline: VulkanPipeline,
+    render_pass: Arc<VulkanRenderPass>,
+    pipeline: Arc<VulkanPipeline>,
     frame_number: usize,
     frames: Vec<Arc<VulkanFrame>>,
 }
@@ -39,7 +41,7 @@ impl VulkanContext {
         } };
 
         let swap_chain = unsafe { match VulkanSwapchain::new(device.clone(), &window) {
-            Ok(swap_chain) => swap_chain,
+            Ok(swap_chain) => Arc::new(swap_chain),
             Err(err) => {
                 println!("Error creating vulkan swapchain {:?}", err);
                 return Err(ContextError);
@@ -47,7 +49,7 @@ impl VulkanContext {
         } };
 
         let resources = match VulkanResources::new(device.clone()) {
-            Ok(resources) => resources,
+            Ok(resources) => Arc::new(resources),
             Err(err) => {
                 println!("Error creating vulkan resources {:?}", err);
                 return Err(ContextError);
@@ -55,28 +57,38 @@ impl VulkanContext {
         };
 
         let render_pass = match VulkanRenderPass::new(device.clone(), &swap_chain) {
-            Ok(render_pass) => render_pass,
+            Ok(render_pass) => Arc::new(render_pass),
             Err(err) => {
                 println!("Error creating vulkan render pass {:?}", err);
                 return Err(ContextError);
             }
         };
 
-        let pipeline = match VulkanPipeline::new(device.clone(), &swap_chain, &render_pass) {
-            Ok(pipeline) => pipeline,
+        let pipeline = match VulkanPipeline::new(device.clone(), swap_chain.clone(), render_pass.clone()) {
+            Ok(pipeline) => Arc::new(pipeline),
             Err(err) => {
                 println!("Error creating vulkan pipeline {:?}", err);
                 return Err(ContextError);
             }
         };
 
-        let resources = Arc::new(resources);
         let mut frames = Vec::new();
 
         // TODO: Magic 2 for 2 frames in flight
         for i in 0..2 {
-            let frame_resources = VulkanFrameResources::new(resources.clone(), i);
-            frames.push(Arc::new(VulkanFrame::new(device.clone(), frame_resources)));
+            let frame_resources = Arc::new(VulkanFrameResources::new(resources.clone(), i));
+
+            let frame = match VulkanFrame::new(
+                device.clone(), frame_resources.clone(), swap_chain.clone(), render_pass.clone(), pipeline.clone()
+            ) {
+                Ok(frame) => frame,
+                Err(err) => {
+                    println!("Error creating vulkan frame {:?}", err);
+                    return Err(ContextError);
+                }
+            };
+            
+            frames.push(Arc::new(frame));
         }
 
         Ok( Self {
