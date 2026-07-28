@@ -76,7 +76,7 @@ impl VulkanContext {
 
         // TODO: Magic 2 for 2 frames in flight
         for i in 0..2 {
-            let frame_resources = Arc::new(VulkanFrameResources::new(resources.clone(), i));
+            let frame_resources = Arc::new(VulkanFrameResources::new(device.clone(), resources.clone(), i));
 
             let frame = match VulkanFrame::new(
                 device.clone(), frame_resources.clone(), swap_chain.clone(), render_pass.clone(), pipeline.clone(), i

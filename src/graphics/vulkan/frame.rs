@@ -10,9 +10,7 @@ use super::hardware::swapchain::{ VulkanSwapchain };
 use super::hardware::device::{ VulkanDevice };
 use super::application::render_pass::{ VulkanRenderPass };
 use super::application::pipeline::{ VulkanPipeline };
-use core::slice;
 use std::sync::{ Arc, Mutex };
-use ash::vk::Handle;
 use ash::{ vk };
 
 /*
@@ -28,6 +26,7 @@ pub struct VulkanFrame {
     image_available_gpu: vk::Semaphore,
     in_flight_fence: vk::Fence,
     image_index: Mutex<Option<u32>>,
+    submitted_command_buffer: Mutex<Option<vk::CommandBuffer>>,
     frame_index: usize
 }
 
@@ -90,179 +89,10 @@ impl VulkanFrame {
             image_available_gpu: image_available_on_gpu,
             in_flight_fence: in_flight_fence,
             image_index: Mutex::new(None),
+            submitted_command_buffer: Mutex::new(None),
             frame_index: frame_index
         })
     }
-}
-
-fn push_face(
-    vertex_0: glm::Vec3,
-    vertex_1: glm::Vec3,
-    vertex_2: glm::Vec3,
-    vertex_3: glm::Vec3,
-    vertices: &mut Vec<Vertex>,
-    indices: &mut Vec<u32>
-) {
-    let index = vertices.len() as u32;
-    vertices.push(Vertex { pos: vertex_0, color: glm::vec3(1.0f32, 0.0f32, 0.0f32) });
-    vertices.push(Vertex { pos: vertex_1, color: glm::vec3(0.0f32, 1.0f32, 0.0f32) });
-    vertices.push(Vertex { pos: vertex_2, color: glm::vec3(0.0f32, 0.0f32, 1.0f32) });
-    vertices.push(Vertex { pos: vertex_3, color: glm::vec3(1.0f32, 1.0f32, 1.0f32) });
-    indices.push(index);
-    indices.push(index + 1);
-    indices.push(index + 2);
-    indices.push(index + 2);
-    indices.push(index + 1);
-    indices.push(index + 3);
-}
-
-fn push_right_face(
-    voxel_offset: glm::Vec3,
-    vertices: &mut Vec<Vertex>,
-    indices: &mut Vec<u32>
-) {
-    let v0 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 1.0f32);
-    let v1 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 1.0f32);
-    let v2 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 1.0f32);
-    let v3 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 1.0f32);
-    push_face(v0, v1, v2, v3, vertices, indices);
-}
-
-fn push_front_face(
-    voxel_offset: glm::Vec3,
-    vertices: &mut Vec<Vertex>,
-    indices: &mut Vec<u32>
-) {
-    let v0 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 0.0f32);
-    let v1 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 0.0f32);
-    let v2 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 1.0f32);
-    let v3 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 1.0f32);
-    push_face(v0, v1, v2, v3, vertices, indices);
-}
-
-fn push_bottom_face(
-    voxel_offset: glm::Vec3,
-    vertices: &mut Vec<Vertex>,
-    indices: &mut Vec<u32>
-) {
-    let v0 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 0.0f32);
-    let v1 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 0.0f32);
-    let v2 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 1.0f32);
-    let v3 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 1.0f32);
-    push_face(v0, v1, v2, v3, vertices, indices);
-}
-
-fn push_left_face(
-    voxel_offset: glm::Vec3,
-    vertices: &mut Vec<Vertex>,
-    indices: &mut Vec<u32>
-) {
-    let v0 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 0.0f32);
-    let v1 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 0.0f32);
-    let v2 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 0.0f32);
-    let v3 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 0.0f32);
-    push_face(v0, v1, v2, v3, vertices, indices);
-}
-
-fn push_back_face(
-    voxel_offset: glm::Vec3,
-    vertices: &mut Vec<Vertex>,
-    indices: &mut Vec<u32>
-) {
-    let v0 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 0.0f32);
-    let v1 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 1.0f32);
-    let v2 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 0.0f32);
-    let v3 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 1.0f32);
-    push_face(v0, v1, v2, v3, vertices, indices);
-}
-
-fn push_top_face(
-    voxel_offset: glm::Vec3,
-    vertices: &mut Vec<Vertex>,
-    indices: &mut Vec<u32>
-) {
-    let v0 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 0.0f32);
-    let v1 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 1.0f32);
-    let v2 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 0.0f32);
-    let v3 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 1.0f32);
-    push_face(v0, v1, v2, v3, vertices, indices);
-}
-
-fn create_cube(
-    vertices: &mut Vec<Vertex>,
-    indices: &mut Vec<u32>
-) {
-    let v0 = glm::vec3(0.0f32, 0.0f32, 0.0f32);
-    push_right_face(v0, vertices, indices);
-    push_left_face(v0, vertices, indices);
-    push_front_face(v0, vertices, indices);
-    push_back_face(v0, vertices, indices);
-    push_top_face(v0, vertices, indices);
-    push_bottom_face(v0, vertices, indices);
-}
-
-fn copy_cpu_staging_buffer_to_gpu(
-    device: Arc<VulkanDevice>,
-    staging_buffer: vk::Buffer,
-    buffer: vk::Buffer,
-    bytes: usize
-) -> Result<(), FrameError> {
-    let alloc_info = vk::CommandBufferAllocateInfo {
-        level: vk::CommandBufferLevel::PRIMARY,
-        command_buffer_count: 1,
-        command_pool: device.command_pool,
-        ..Default::default()
-    };
-
-    let command_buffer = unsafe { device.device.allocate_command_buffers(&alloc_info).map_err(|err| {
-        println!("Error creating transfer command buffer {}", err);
-        FrameError
-    }) }?[0];
-
-    let begin_buffer_info = vk::CommandBufferBeginInfo {
-        flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
-        ..Default::default()
-    };
-
-    unsafe {
-        device.device.begin_command_buffer(command_buffer, &begin_buffer_info).map_err(|err| {
-            println!("Error beginning transfer command buffer {}", err);
-            FrameError
-        })?;
-    }
-
-    let copy_region = vk::BufferCopy {
-        src_offset: 0,
-        dst_offset: 0,
-        size: bytes as u64,
-        ..Default::default()
-    };
-
-    unsafe { device.device.cmd_copy_buffer(command_buffer, staging_buffer, buffer, &[copy_region]) };
-    unsafe { device.device.end_command_buffer(command_buffer).map_err(|err| {
-        println!("Error ending transfer command buffer {}", err);
-        FrameError
-    }) }?;
-
-    let submit_info = vk::SubmitInfo {
-        command_buffer_count: 1,
-        p_command_buffers: [ command_buffer ].as_ptr(),
-        ..Default::default()
-    };
-
-    unsafe { device.device.queue_submit(device.queues.graphics_queue, &[submit_info], vk::Fence::null()).map_err(|err| {
-        println!("Error submitting command buffer to queue {}", err);
-        FrameError
-    }) }?;
-
-    unsafe { device.device.queue_wait_idle(device.queues.graphics_queue).map_err(|err| {
-        println!("Error waiting for queue to be idle {}", err);
-        FrameError
-    }) }?;
-
-    unsafe { device.device.free_command_buffers(device.command_pool, &[ command_buffer ]) };
-
-    Ok(())
 }
 
 impl Frame for VulkanFrame {
@@ -275,19 +105,43 @@ impl Frame for VulkanFrame {
     }
 
     fn create_command_buffer(&self, args: CommandBufferArgs) -> Result<Self::T, FrameError> {
-        VulkanCommandBuffer::new(self.device.clone()).map_err(|err| {
+        let image_index_guard = self.image_index.lock().map_err(|err| {
+            println!("Mutex on image index is poisoned {}", err);
+            FrameError
+        })?;
+
+        VulkanCommandBuffer::new(
+            self.device.clone(),
+            self.resources.clone(),
+            self.swap_chain.clone(),
+            self.render_pass.clone(),
+            self.pipeline.clone(),
+            image_index_guard.unwrap() as usize
+        ).map_err(|err| {
             println!("Error creating command buffer {}", err);
             FrameError
         })
     }
 
     fn submit_command_buffer(&self, buffer: Self::T) -> Result<(), FrameError> {
-        unimplemented!()
+        let mut submitted_buffer = self.submitted_command_buffer.lock().map_err(|err| {
+            println!("Mutex on command buffer is poisoned {}", err);
+            FrameError
+        })?;
+
+        *submitted_buffer = Some(buffer.command_buffer);
+
+        Ok(())
     }
 
     fn begin_frame(&self) -> Result<(), FrameError> {
         let mut image_index_guard = self.image_index.lock().map_err(|err| {
             println!("Mutex on image index is poisoned {}", err);
+            FrameError
+        })?;
+
+        let mut submitted_buffer = self.submitted_command_buffer.lock().map_err(|err| {
+            println!("Mutex on command buffer is poisoned {}", err);
             FrameError
         })?;
 
@@ -310,6 +164,11 @@ impl Frame for VulkanFrame {
             println!("Error acquiring next frame from swap chain {}", err);
             FrameError
         }) }?;
+
+        if submitted_buffer.is_some() {
+            unsafe { self.device.device.free_command_buffers(self.device.command_pool, &[ submitted_buffer.unwrap() ]) };
+            *submitted_buffer = None;
+        }
 
         unsafe { self.device.device.reset_command_buffer(self.command_buffer, vk::CommandBufferResetFlags::empty()).map_err(|err| {
             println!("Error resetting command buffer {}", err);
@@ -339,6 +198,8 @@ impl Frame for VulkanFrame {
             },
         ];
 
+        let extent = self.swap_chain.swap_chain_extent;
+
         let render_pass_info = vk::RenderPassBeginInfo {
             render_pass: self.render_pass.render_pass,
             framebuffer: self.render_pass.frame_buffers[image_index as usize],
@@ -347,164 +208,14 @@ impl Frame for VulkanFrame {
                     x: 0,
                     y: 0
                 },
-                extent: self.swap_chain.swap_chain_extent,
+                extent: extent,
             },
             clear_value_count: clear_values.len() as u32,
             p_clear_values: clear_values.as_ptr(),
             ..Default::default()
         };
 
-        unsafe { self.device.device.cmd_begin_render_pass(self.command_buffer, &render_pass_info, vk::SubpassContents::INLINE) };
-        unsafe { self.device.device.cmd_bind_pipeline(self.command_buffer, vk::PipelineBindPoint::GRAPHICS, self.pipeline.pipeline) };
-
-        let extent = self.swap_chain.swap_chain_extent;
-
-        let viewport = vk::Viewport {
-            x: 0.0f32,
-            y: 0.0f32,
-            width: extent.width as f32,
-            height: extent.height as f32,
-            min_depth: 0.0f32,
-            max_depth: 1.0f32,
-            ..Default::default()
-        };
-
-        unsafe { self.device.device.cmd_set_viewport(self.command_buffer, 0, &[ viewport ]) };
-
-        let scissor = vk::Rect2D {
-            offset: vk::Offset2D {
-                x: 0,
-                y: 0,
-            },
-            extent: self.swap_chain.swap_chain_extent,
-            ..Default::default()
-        };
-
-        unsafe { self.device.device.cmd_set_scissor(self.command_buffer, 0, &[ scissor ]) };
-
-        let mut camera = Camera {
-            view: glm::ext::look_at(
-                glm::vec3(2.0f32, 2.0f32, 2.0f32),
-                glm::vec3(0.0f32, 0.0f32, 0.0f32),
-                glm::vec3(0.0f32, 0.0f32, 1.0f32)
-            ),
-            proj: glm::ext::perspective(
-                glm::radians(45.0f32),
-                extent.width as f32 / extent.height as f32,
-                0.1f32,
-                1000.0f32
-            )
-        };
-
-        camera.proj[1][1] *= -1.0f32;
-
-        let camera_bytes = unsafe {
-            slice::from_raw_parts(
-                &camera as *const Camera as *const u8,
-                std::mem::size_of::<Camera>()
-            )
-        };
-
-        unsafe {
-            self.device.device.cmd_push_constants(
-                self.command_buffer,
-                self.pipeline.pipeline_layout,
-                vk::ShaderStageFlags::VERTEX,
-                0,
-                camera_bytes
-            );
-        }
-
-        let model_matrix = UniformBufferObject {
-            model: glm::mat4(
-                1.0f32, 0.0f32, 0.0f32, 0.0f32,
-                0.0f32, 1.0f32, 0.0f32, 0.0f32,
-                0.0f32, 0.0f32, 1.0f32, 0.0f32,
-                0.0f32, 0.0f32, 0.0f32, 1.0f32
-            )
-        };
-
-        let uniform_pointer = self.resources.get_model_buffer_pointer().map_err(|err| {
-            println!("Error getting model buffer pointer {:?}", err);
-            FrameError
-        })?;
-
-        unsafe {
-            *(uniform_pointer as *mut UniformBufferObject) = model_matrix;
-        }
-
-        unsafe {
-            let dynamic_offset = [ 0 ];
-            let descriptor_set = [ self.device.descriptor_sets[self.frame_index] ];
-            self.device.device.cmd_bind_descriptor_sets(
-                self.command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                self.pipeline.pipeline_layout,
-                0,
-                &descriptor_set,
-                &dynamic_offset
-            );
-        }
-
-        let mut vertex_list = Vec::new();
-        let mut index_list = Vec::new();
-        create_cube(&mut vertex_list, &mut index_list);
-
-        let vertex_pointer = self.resources.get_vertex_buffer_pointer().map_err(|err| {
-            println!("Error getting vertex buffer pointer {:?}", err);
-            FrameError
-        })? as *mut Vertex;
-
-        let index_pointer = self.resources.get_index_buffer_pointer().map_err(|err| {
-            println!("Error getting index buffer pointer {:?}", err);
-            FrameError
-        })? as *mut u32;
-
-        unsafe {
-            std::ptr::copy_nonoverlapping(vertex_list.as_ptr(), vertex_pointer, vertex_list.len());
-            std::ptr::copy_nonoverlapping(index_list.as_ptr(), index_pointer, index_list.len());
-        }
-
-        copy_cpu_staging_buffer_to_gpu(
-            self.device.clone(),
-            self.resources.get_vulkan_vertex_staging_buffer_handle().unwrap(),
-            self.resources.get_vulkan_vertex_buffer_handle().unwrap(),
-            std::mem::size_of::<Vertex>() * vertex_list.len()
-        )?;
-
-        copy_cpu_staging_buffer_to_gpu(
-            self.device.clone(),
-            self.resources.get_vulkan_index_staging_buffer_handle().unwrap(),
-            self.resources.get_vulkan_index_buffer_handle().unwrap(),
-            std::mem::size_of::<u32>() * index_list.len()
-        )?;
-
-        unsafe {
-            self.device.device.cmd_bind_vertex_buffers(
-                self.command_buffer,
-                0,
-                &[self.resources.get_vulkan_vertex_buffer_handle().unwrap()],
-                &[0]
-            )
-        };
-
-        unsafe {
-            self.device.device.cmd_bind_index_buffer(
-                self.command_buffer,
-                self.resources.get_vulkan_index_buffer_handle().unwrap(),
-                0,
-                vk::IndexType::UINT32
-            )
-        };
-
-        unsafe { self.device.device.cmd_draw_indexed(
-            self.command_buffer,
-            index_list.len() as u32,
-            1,
-            0,
-            0,
-            0
-        ) };
+        unsafe { self.device.device.cmd_begin_render_pass(self.command_buffer, &render_pass_info, vk::SubpassContents::SECONDARY_COMMAND_BUFFERS) };
 
         *image_index_guard = Some(image_index);
 
@@ -517,10 +228,24 @@ impl Frame for VulkanFrame {
             FrameError
         })?;
 
+        let submitted_command_buffer_guard = self.submitted_command_buffer.lock().map_err(|err| {
+            println!("Mutex on submitted command buffer is poisoned {}", err);
+            FrameError
+        })?;
+
         if image_index_guard.is_none() {
             println!("Image index is unexpectedly none when something is expected");
             return Err(FrameError);
         }
+
+        if submitted_command_buffer_guard.is_none() {
+            println!("Submitted command buffer is unexpectedly none when something is expected");
+            return Err(FrameError);
+        }
+
+        let secondary_buffers = [ submitted_command_buffer_guard.unwrap() ];
+
+        unsafe { self.device.device.cmd_execute_commands(self.command_buffer, &secondary_buffers) };
 
         unsafe { self.device.device.cmd_end_render_pass(self.command_buffer); };
 
@@ -593,6 +318,7 @@ impl Drop for VulkanFrame {
         unsafe {
             self.device.device.destroy_semaphore(self.image_available_gpu, None);
             self.device.device.destroy_fence(self.in_flight_fence, None);
+            self.device.device.free_command_buffers(self.device.command_pool, &[self.command_buffer]);
         }
     }
 }

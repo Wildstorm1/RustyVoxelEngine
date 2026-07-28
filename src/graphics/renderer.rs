@@ -5,9 +5,9 @@
 use crate::graphics::vulkan::hardware::device::{ VulkanDevice };
 use crate::graphics::vulkan::hardware::swapchain::{ VulkanSwapchain };
 use crate::graphics::hal::command_buffer::{ CommandBuffer, DrawIndexedPacket };
-use crate::graphics::hal::context::{ Context, CommandBufferArgs, ContextError };
+use crate::graphics::hal::context::{ Context, ContextError };
 use crate::graphics::hal::resources::{ Resources };
-use crate::graphics::hal::frame::{ Frame };
+use crate::graphics::hal::frame::{ Frame, CommandBufferArgs };
 use crate::graphics::vulkan::context::{ VulkanContext };
 use sdl3::video::Window;
 use std::sync::Arc;
@@ -41,6 +41,36 @@ impl <T: Context> Renderer<T> {
             RendererError
         })?;
 
+        let mut command_buffer = frame.create_command_buffer(CommandBufferArgs {}).map_err(|err| {
+            println!("Error creating command buffer {:?}", err);
+            RendererError
+        })?;
+
+        command_buffer.stage().map_err(|err| {
+            println!("Error staging command buffer {:?}", err);
+            RendererError
+        })?;
+
+        frame.submit_command_buffer(command_buffer).map_err(|err| {
+            println!("Error submitting command buffer {:?}", err);
+            RendererError
+        })?;
+
+        frame.end_frame().map_err(|err| {
+            println!("Error ending frame {:?}", err);
+            RendererError
+        })?;
+
+        frame.present_frame().map_err(|err| {
+            println!("Error presenting frame {:?}", err);
+            RendererError
+        })?;
+
+        Ok(())
+    }
+}
+
+/*
         /*
         let resources = frame.get_resources().map_err(|err| {
             println!("Error getting resources api {:?}", err);
@@ -63,22 +93,6 @@ impl <T: Context> Renderer<T> {
         })?;
         */
 
-        /*
-         * Write data
-         */
-
-        /*
-         * Draw commands
-         */
-
-        frame.end_frame();
-        frame.present_frame();
-
-        Ok(())
-    }
-}
-
-/*
     let mut command_buffer = match context.create_command_buffer(CommandBufferArgs {}) {
         Ok(command_buffer) => command_buffer,
         Err(err) => {

@@ -6,11 +6,6 @@ use super::frame::{ Frame };
 use std::sync::{ Arc };
 
 /*
- * Inputs needed for creating a command buffer
- */
-pub struct CommandBufferArgs {}
-
-/*
  * Simple struct for context errors
  */
 #[derive(Debug)]
