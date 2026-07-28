@@ -79,7 +79,7 @@ impl VulkanContext {
             let frame_resources = Arc::new(VulkanFrameResources::new(resources.clone(), i));
 
             let frame = match VulkanFrame::new(
-                device.clone(), frame_resources.clone(), swap_chain.clone(), render_pass.clone(), pipeline.clone()
+                device.clone(), frame_resources.clone(), swap_chain.clone(), render_pass.clone(), pipeline.clone(), i
             ) {
                 Ok(frame) => frame,
                 Err(err) => {
@@ -112,5 +112,13 @@ impl Context for VulkanContext {
         self.frame_number = (self.frame_number + 1) % 2;
 
         Ok(frame)
+    }
+}
+
+impl Drop for VulkanContext {
+    fn drop(&mut self) {
+        unsafe {
+            self.device.device.device_wait_idle();
+        }
     }
 }

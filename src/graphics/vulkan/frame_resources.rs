@@ -6,7 +6,9 @@ use super::super::hal::resources::{
     Resources, ResourcesError, Buffer, Uniform
 };
 use super::application::resources::{ VulkanResources };
+use std::ffi::{ c_void };
 use std::sync::{ Arc };
+use ash::vk;
 
 /*
  * Wrapper implementation that partitions resources per frame
@@ -45,5 +47,41 @@ impl Resources for VulkanFrameResources {
         } else {
             Err(ResourcesError)
         }
+    }
+}
+
+impl VulkanFrameResources {
+    pub fn get_model_buffer_pointer(&self) -> Result<*mut c_void, ResourcesError> {
+        if self.frame_number == 0 {
+            Ok(self.resources.frame1_uniform_data.mapping)
+        } else if self.frame_number == 1 {
+            Ok(self.resources.frame2_uniform_data.mapping)
+        } else {
+            Err(ResourcesError)
+        }
+    }
+
+    pub fn get_vertex_buffer_pointer(&self) -> Result<*mut c_void, ResourcesError> {
+        Ok(self.resources.vertex_data.mapping)
+    }
+
+    pub fn get_vulkan_vertex_buffer_handle(&self) -> Result<vk::Buffer, ResourcesError> {
+        Ok(self.resources.vertex_data.buffer)
+    }
+
+    pub fn get_vulkan_vertex_staging_buffer_handle(&self) -> Result<vk::Buffer, ResourcesError> {
+        Ok(self.resources.vertex_data.staging_buffer)
+    }
+
+    pub fn get_index_buffer_pointer(&self) -> Result<*mut c_void, ResourcesError> {
+        Ok(self.resources.index_data.mapping)
+    }
+
+    pub fn get_vulkan_index_buffer_handle(&self) -> Result<vk::Buffer, ResourcesError> {
+        Ok(self.resources.index_data.buffer)
+    }
+
+    pub fn get_vulkan_index_staging_buffer_handle(&self) -> Result<vk::Buffer, ResourcesError> {
+        Ok(self.resources.index_data.staging_buffer)
     }
 }

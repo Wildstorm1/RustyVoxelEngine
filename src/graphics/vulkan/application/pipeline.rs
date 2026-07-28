@@ -25,7 +25,7 @@ pub struct PipelineError;
  */
 pub struct VulkanPipeline {
     device: Arc<VulkanDevice>,
-    pipeline_layout: vk::PipelineLayout,
+    pub pipeline_layout: vk::PipelineLayout,
     pub pipeline: vk::Pipeline
 }
 

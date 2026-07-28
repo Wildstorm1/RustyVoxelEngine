@@ -5,23 +5,24 @@
 use super::super::super::hal::resources::{
     ResourcesError, Buffer, Uniform
 };
+use super::super::super::hal::stucts::{ UniformBufferObject };
 use super::super::hardware::device::{ VulkanDevice };
 use std::ffi::{ c_void };
 use std::sync::{ Arc };
 use ash::{ vk };
 
-struct BufferData {
-    buffer: vk::Buffer,
+pub struct BufferData {
+    pub buffer: vk::Buffer,
     memory: vk::DeviceMemory,
-    staging_buffer: vk::Buffer,
+    pub staging_buffer: vk::Buffer,
     staging_memory: vk::DeviceMemory,
-    mapping: *mut c_void
+    pub mapping: *mut c_void
 }
 
-struct UniformData {
+pub struct UniformData {
     buffer: vk::Buffer,
     memory: vk::DeviceMemory,
-    mapping: *mut c_void
+    pub mapping: *mut c_void
 }
 
 /*
@@ -30,13 +31,13 @@ struct UniformData {
 pub struct VulkanResources {
     device: Arc<VulkanDevice>,
     vertex_handle: Buffer,
-    vertex_data: BufferData,
+    pub vertex_data: BufferData,
     index_handle: Buffer,
-    index_data: BufferData,
+    pub index_data: BufferData,
     frame1_uniform_handle: Uniform,
-    frame1_uniform_data: UniformData,
+    pub frame1_uniform_data: UniformData,
     frame2_uniform_handle: Uniform,
-    frame2_uniform_data: UniformData,
+    pub frame2_uniform_data: UniformData,
 }
 
 fn find_memory_type(
@@ -147,6 +148,31 @@ fn create_staged_buffer(
     });
 }
 
+fn bind_uniform_to_descriptor_set(
+    device: &VulkanDevice,
+    descriptor_set: vk::DescriptorSet,
+    buffer: vk::Buffer
+) {
+    let buffer_info = vk::DescriptorBufferInfo {
+        buffer: buffer,
+        offset: 0,
+        range: std::mem::size_of::<UniformBufferObject>() as u64,
+        ..Default::default()
+    };
+
+    let descriptor_write = vk::WriteDescriptorSet {
+        dst_set: descriptor_set,
+        dst_binding: 0,
+        dst_array_element: 0,
+        descriptor_type: vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
+        descriptor_count: 1,
+        p_buffer_info: &buffer_info,
+        ..Default::default()
+    };
+
+    unsafe { device.device.update_descriptor_sets(&[ descriptor_write ], &[]) };
+}
+
 impl VulkanResources {
     pub fn new(device: Arc<VulkanDevice>) -> Result<Self, ResourcesError> {
         let vertex_buffer = create_staged_buffer(&device, vk::BufferUsageFlags::VERTEX_BUFFER, 2500000000)?;
@@ -155,10 +181,12 @@ impl VulkanResources {
         let usage_flags = vk::BufferUsageFlags::UNIFORM_BUFFER;
         let properties = vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT;
         let (model_buffer_1, model_buffer_memory_1, model_mapped_memory_1) = create_mapped_buffer(&device, 2500000000, usage_flags, properties)?;
+        bind_uniform_to_descriptor_set(&device, device.descriptor_sets[0], model_buffer_1);
 
         let usage_flags = vk::BufferUsageFlags::UNIFORM_BUFFER;
         let properties = vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT;
         let (model_buffer_2, model_buffer_memory_2, model_mapped_memory_2) = create_mapped_buffer(&device, 2500000000, usage_flags, properties)?;
+        bind_uniform_to_descriptor_set(&device, device.descriptor_sets[1], model_buffer_2);
 
         Ok(Self {
             device: device,

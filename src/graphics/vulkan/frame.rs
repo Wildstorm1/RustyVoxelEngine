@@ -3,14 +3,16 @@
  */
 
 use super::super::hal::frame::{ Frame, FrameError, CommandBufferArgs };
+use super::super::hal::stucts::{ Camera, UniformBufferObject, Vertex };
 use super::frame_resources::{ VulkanFrameResources };
 use super::command_buffer::{ VulkanCommandBuffer };
 use super::hardware::swapchain::{ VulkanSwapchain };
 use super::hardware::device::{ VulkanDevice };
 use super::application::render_pass::{ VulkanRenderPass };
 use super::application::pipeline::{ VulkanPipeline };
+use core::slice;
 use std::sync::{ Arc, Mutex };
-use ash::ext::image_compression_control_swapchain;
+use ash::vk::Handle;
 use ash::{ vk };
 
 /*
@@ -25,7 +27,8 @@ pub struct VulkanFrame {
     command_buffer: vk::CommandBuffer,
     image_available_gpu: vk::Semaphore,
     in_flight_fence: vk::Fence,
-    image_index: Mutex<Option<u32>>
+    image_index: Mutex<Option<u32>>,
+    frame_index: usize
 }
 
 impl VulkanFrame {
@@ -34,7 +37,8 @@ impl VulkanFrame {
         resources: Arc<VulkanFrameResources>,
         swap_chain: Arc<VulkanSwapchain>,
         render_pass: Arc<VulkanRenderPass>,
-        pipeline: Arc<VulkanPipeline>
+        pipeline: Arc<VulkanPipeline>,
+        frame_index: usize
     ) -> Result<Self, FrameError> {
         let frame_buffer_info = vk::CommandBufferAllocateInfo {
             command_pool: device.command_pool,
@@ -85,9 +89,180 @@ impl VulkanFrame {
             command_buffer: command_buffer,
             image_available_gpu: image_available_on_gpu,
             in_flight_fence: in_flight_fence,
-            image_index: Mutex::new(None)
+            image_index: Mutex::new(None),
+            frame_index: frame_index
         })
     }
+}
+
+fn push_face(
+    vertex_0: glm::Vec3,
+    vertex_1: glm::Vec3,
+    vertex_2: glm::Vec3,
+    vertex_3: glm::Vec3,
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>
+) {
+    let index = vertices.len() as u32;
+    vertices.push(Vertex { pos: vertex_0, color: glm::vec3(1.0f32, 0.0f32, 0.0f32) });
+    vertices.push(Vertex { pos: vertex_1, color: glm::vec3(0.0f32, 1.0f32, 0.0f32) });
+    vertices.push(Vertex { pos: vertex_2, color: glm::vec3(0.0f32, 0.0f32, 1.0f32) });
+    vertices.push(Vertex { pos: vertex_3, color: glm::vec3(1.0f32, 1.0f32, 1.0f32) });
+    indices.push(index);
+    indices.push(index + 1);
+    indices.push(index + 2);
+    indices.push(index + 2);
+    indices.push(index + 1);
+    indices.push(index + 3);
+}
+
+fn push_right_face(
+    voxel_offset: glm::Vec3,
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>
+) {
+    let v0 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 1.0f32);
+    let v1 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 1.0f32);
+    let v2 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 1.0f32);
+    let v3 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 1.0f32);
+    push_face(v0, v1, v2, v3, vertices, indices);
+}
+
+fn push_front_face(
+    voxel_offset: glm::Vec3,
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>
+) {
+    let v0 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 0.0f32);
+    let v1 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 0.0f32);
+    let v2 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 1.0f32);
+    let v3 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 1.0f32);
+    push_face(v0, v1, v2, v3, vertices, indices);
+}
+
+fn push_bottom_face(
+    voxel_offset: glm::Vec3,
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>
+) {
+    let v0 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 0.0f32);
+    let v1 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 0.0f32);
+    let v2 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 1.0f32);
+    let v3 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 1.0f32);
+    push_face(v0, v1, v2, v3, vertices, indices);
+}
+
+fn push_left_face(
+    voxel_offset: glm::Vec3,
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>
+) {
+    let v0 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 0.0f32);
+    let v1 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 0.0f32);
+    let v2 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 0.0f32);
+    let v3 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 0.0f32);
+    push_face(v0, v1, v2, v3, vertices, indices);
+}
+
+fn push_back_face(
+    voxel_offset: glm::Vec3,
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>
+) {
+    let v0 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 0.0f32);
+    let v1 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 1.0f32);
+    let v2 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 0.0f32);
+    let v3 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 1.0f32);
+    push_face(v0, v1, v2, v3, vertices, indices);
+}
+
+fn push_top_face(
+    voxel_offset: glm::Vec3,
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>
+) {
+    let v0 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 0.0f32);
+    let v1 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 1.0f32);
+    let v2 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 0.0f32);
+    let v3 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 1.0f32);
+    push_face(v0, v1, v2, v3, vertices, indices);
+}
+
+fn create_cube(
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>
+) {
+    let v0 = glm::vec3(0.0f32, 0.0f32, 0.0f32);
+    push_right_face(v0, vertices, indices);
+    push_left_face(v0, vertices, indices);
+    push_front_face(v0, vertices, indices);
+    push_back_face(v0, vertices, indices);
+    push_top_face(v0, vertices, indices);
+    push_bottom_face(v0, vertices, indices);
+}
+
+fn copy_cpu_staging_buffer_to_gpu(
+    device: Arc<VulkanDevice>,
+    staging_buffer: vk::Buffer,
+    buffer: vk::Buffer,
+    bytes: usize
+) -> Result<(), FrameError> {
+    let alloc_info = vk::CommandBufferAllocateInfo {
+        level: vk::CommandBufferLevel::PRIMARY,
+        command_buffer_count: 1,
+        command_pool: device.command_pool,
+        ..Default::default()
+    };
+
+    let command_buffer = unsafe { device.device.allocate_command_buffers(&alloc_info).map_err(|err| {
+        println!("Error creating transfer command buffer {}", err);
+        FrameError
+    }) }?[0];
+
+    let begin_buffer_info = vk::CommandBufferBeginInfo {
+        flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
+        ..Default::default()
+    };
+
+    unsafe {
+        device.device.begin_command_buffer(command_buffer, &begin_buffer_info).map_err(|err| {
+            println!("Error beginning transfer command buffer {}", err);
+            FrameError
+        })?;
+    }
+
+    let copy_region = vk::BufferCopy {
+        src_offset: 0,
+        dst_offset: 0,
+        size: bytes as u64,
+        ..Default::default()
+    };
+
+    unsafe { device.device.cmd_copy_buffer(command_buffer, staging_buffer, buffer, &[copy_region]) };
+    unsafe { device.device.end_command_buffer(command_buffer).map_err(|err| {
+        println!("Error ending transfer command buffer {}", err);
+        FrameError
+    }) }?;
+
+    let submit_info = vk::SubmitInfo {
+        command_buffer_count: 1,
+        p_command_buffers: [ command_buffer ].as_ptr(),
+        ..Default::default()
+    };
+
+    unsafe { device.device.queue_submit(device.queues.graphics_queue, &[submit_info], vk::Fence::null()).map_err(|err| {
+        println!("Error submitting command buffer to queue {}", err);
+        FrameError
+    }) }?;
+
+    unsafe { device.device.queue_wait_idle(device.queues.graphics_queue).map_err(|err| {
+        println!("Error waiting for queue to be idle {}", err);
+        FrameError
+    }) }?;
+
+    unsafe { device.device.free_command_buffers(device.command_pool, &[ command_buffer ]) };
+
+    Ok(())
 }
 
 impl Frame for VulkanFrame {
@@ -207,6 +382,130 @@ impl Frame for VulkanFrame {
 
         unsafe { self.device.device.cmd_set_scissor(self.command_buffer, 0, &[ scissor ]) };
 
+        let mut camera = Camera {
+            view: glm::ext::look_at(
+                glm::vec3(2.0f32, 2.0f32, 2.0f32),
+                glm::vec3(0.0f32, 0.0f32, 0.0f32),
+                glm::vec3(0.0f32, 0.0f32, 1.0f32)
+            ),
+            proj: glm::ext::perspective(
+                glm::radians(45.0f32),
+                extent.width as f32 / extent.height as f32,
+                0.1f32,
+                1000.0f32
+            )
+        };
+
+        camera.proj[1][1] *= -1.0f32;
+
+        let camera_bytes = unsafe {
+            slice::from_raw_parts(
+                &camera as *const Camera as *const u8,
+                std::mem::size_of::<Camera>()
+            )
+        };
+
+        unsafe {
+            self.device.device.cmd_push_constants(
+                self.command_buffer,
+                self.pipeline.pipeline_layout,
+                vk::ShaderStageFlags::VERTEX,
+                0,
+                camera_bytes
+            );
+        }
+
+        let model_matrix = UniformBufferObject {
+            model: glm::mat4(
+                1.0f32, 0.0f32, 0.0f32, 0.0f32,
+                0.0f32, 1.0f32, 0.0f32, 0.0f32,
+                0.0f32, 0.0f32, 1.0f32, 0.0f32,
+                0.0f32, 0.0f32, 0.0f32, 1.0f32
+            )
+        };
+
+        let uniform_pointer = self.resources.get_model_buffer_pointer().map_err(|err| {
+            println!("Error getting model buffer pointer {:?}", err);
+            FrameError
+        })?;
+
+        unsafe {
+            *(uniform_pointer as *mut UniformBufferObject) = model_matrix;
+        }
+
+        unsafe {
+            let dynamic_offset = [ 0 ];
+            let descriptor_set = [ self.device.descriptor_sets[self.frame_index] ];
+            self.device.device.cmd_bind_descriptor_sets(
+                self.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.pipeline.pipeline_layout,
+                0,
+                &descriptor_set,
+                &dynamic_offset
+            );
+        }
+
+        let mut vertex_list = Vec::new();
+        let mut index_list = Vec::new();
+        create_cube(&mut vertex_list, &mut index_list);
+
+        let vertex_pointer = self.resources.get_vertex_buffer_pointer().map_err(|err| {
+            println!("Error getting vertex buffer pointer {:?}", err);
+            FrameError
+        })? as *mut Vertex;
+
+        let index_pointer = self.resources.get_index_buffer_pointer().map_err(|err| {
+            println!("Error getting index buffer pointer {:?}", err);
+            FrameError
+        })? as *mut u32;
+
+        unsafe {
+            std::ptr::copy_nonoverlapping(vertex_list.as_ptr(), vertex_pointer, vertex_list.len());
+            std::ptr::copy_nonoverlapping(index_list.as_ptr(), index_pointer, index_list.len());
+        }
+
+        copy_cpu_staging_buffer_to_gpu(
+            self.device.clone(),
+            self.resources.get_vulkan_vertex_staging_buffer_handle().unwrap(),
+            self.resources.get_vulkan_vertex_buffer_handle().unwrap(),
+            std::mem::size_of::<Vertex>() * vertex_list.len()
+        )?;
+
+        copy_cpu_staging_buffer_to_gpu(
+            self.device.clone(),
+            self.resources.get_vulkan_index_staging_buffer_handle().unwrap(),
+            self.resources.get_vulkan_index_buffer_handle().unwrap(),
+            std::mem::size_of::<u32>() * index_list.len()
+        )?;
+
+        unsafe {
+            self.device.device.cmd_bind_vertex_buffers(
+                self.command_buffer,
+                0,
+                &[self.resources.get_vulkan_vertex_buffer_handle().unwrap()],
+                &[0]
+            )
+        };
+
+        unsafe {
+            self.device.device.cmd_bind_index_buffer(
+                self.command_buffer,
+                self.resources.get_vulkan_index_buffer_handle().unwrap(),
+                0,
+                vk::IndexType::UINT32
+            )
+        };
+
+        unsafe { self.device.device.cmd_draw_indexed(
+            self.command_buffer,
+            index_list.len() as u32,
+            1,
+            0,
+            0,
+            0
+        ) };
+
         *image_index_guard = Some(image_index);
 
         Ok(())
@@ -278,10 +577,22 @@ impl Frame for VulkanFrame {
             ..Default::default()
         };
 
-        unsafe { self.device.swapchain_extension.queue_present(self.device.queues.presentation_queue, &present_info) };
+        unsafe { self.device.swapchain_extension.queue_present(self.device.queues.presentation_queue, &present_info).map_err(|err| {
+            println!("Error presenting image {}", err);
+            FrameError
+        }) }?;
 
         *image_index_guard = None;
 
         Ok(())
+    }
+}
+
+impl Drop for VulkanFrame {
+    fn drop(&mut self) {
+        unsafe {
+            self.device.device.destroy_semaphore(self.image_available_gpu, None);
+            self.device.device.destroy_fence(self.in_flight_fence, None);
+        }
     }
 }

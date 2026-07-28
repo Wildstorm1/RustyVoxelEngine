@@ -41,6 +41,7 @@ impl <T: Context> Renderer<T> {
             RendererError
         })?;
 
+        /*
         let resources = frame.get_resources().map_err(|err| {
             println!("Error getting resources api {:?}", err);
             RendererError
@@ -60,6 +61,7 @@ impl <T: Context> Renderer<T> {
             println!("Error getting uniform buffer {:?}", err);
             RendererError
         })?;
+        */
 
         /*
          * Write data
@@ -69,8 +71,8 @@ impl <T: Context> Renderer<T> {
          * Draw commands
          */
 
-        //frame.end_frame();
-        //frame.present_frame();
+        frame.end_frame();
+        frame.present_frame();
 
         Ok(())
     }
