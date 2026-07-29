@@ -219,19 +219,3 @@ impl Drop for VulkanContext {
         }
     }
 }
-
-            /*
-            let frame_resources = Arc::new(VulkanFrameResources::new(device.clone(), resources.clone(), i));
-
-            let frame = match VulkanFrame::new(
-                device.clone(), frame_resources.clone(), swap_chain.clone(), render_pass.clone(), pipeline.clone(), i
-            ) {
-                Ok(frame) => frame,
-                Err(err) => {
-                    println!("Error creating vulkan frame {:?}", err);
-                    return Err(ContextError);
-                }
-            };
-            
-            frames.push(Arc::new(frame));
-            */
