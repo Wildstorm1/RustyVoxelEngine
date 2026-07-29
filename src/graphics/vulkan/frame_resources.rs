@@ -18,22 +18,25 @@ use ash::vk;
 pub struct VulkanFrameResources {
     device: Arc<VulkanDevice>,
     resources: Arc<VulkanResources>,
-    //render_pass: Arc<VulkanRenderPass>,
-    frame_number: usize
+    render_pass: Arc<VulkanRenderPass>,
+    frame_number: usize,
+    swap_chain_index: u32,
 }
 
 impl VulkanFrameResources {
     pub fn new(
         device: Arc<VulkanDevice>,
         resources: Arc<VulkanResources>,
-        //render_pass: Arc<VulkanRenderPass>,
-        frame_number: usize
+        render_pass: Arc<VulkanRenderPass>,
+        frame_number: usize,
+        swap_chain_index: u32,
     ) -> Self {
         Self {
             device: device,
             resources: resources,
-            //render_pass: render_pass,
-            frame_number: frame_number
+            render_pass: render_pass,
+            frame_number: frame_number,
+            swap_chain_index: swap_chain_index
         }
     }
 }
@@ -97,6 +100,15 @@ impl VulkanFrameResources {
         Ok(self.device.descriptor_sets[self.frame_number])
     }
 
-    // pub fn get_frame_buffer(&self) -> 
-    // pub fn get_render_pass
+    pub fn get_frame_buffer(&self) -> vk::Framebuffer {
+        self.render_pass.frame_buffers[self.swap_chain_index as usize]
+    }
+
+    pub fn get_render_pass(&self) -> vk::RenderPass {
+        self.render_pass.render_pass
+    }
+
+    pub fn get_presentation_index(&self) -> u32 {
+        self.swap_chain_index
+    }
 }

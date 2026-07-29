@@ -10,10 +10,8 @@ use super::frame_resources::{ VulkanFrameResources };
 use super::hardware::swapchain::{ VulkanSwapchain };
 use super::hardware::device::{ VulkanDevice };
 use super::application::pipeline::{ VulkanPipeline };
-use super::application::render_pass::{ VulkanRenderPass };
 use std::sync::Arc;
 use core::slice;
-use ash::vk::PipelineInputAssemblyStateCreateInfo;
 use ash::{ vk };
 
 /*
@@ -32,11 +30,9 @@ pub struct VulkanCommandBuffer {
     device: Arc<VulkanDevice>,
     resources: Arc<VulkanFrameResources>,
     swap_chain: Arc<VulkanSwapchain>,
-    render_pass: Arc<VulkanRenderPass>,
     pipeline: Arc<VulkanPipeline>,
     pub command_buffer: vk::CommandBuffer,
     buffer: Vec<InstructionPacket>,
-    hacky_image_index: usize,
     invalidated: bool,
 }
 
@@ -45,9 +41,7 @@ impl VulkanCommandBuffer {
         device: Arc<VulkanDevice>,
         resources: Arc<VulkanFrameResources>,
         swap_chain: Arc<VulkanSwapchain>,
-        render_pass: Arc<VulkanRenderPass>,
         pipeline: Arc<VulkanPipeline>,
-        hacky_image_index: usize,
     ) -> Result<Self, CommandBufferError> {
         let allocate_info = vk::CommandBufferAllocateInfo {
             command_pool: device.command_pool,
@@ -68,11 +62,9 @@ impl VulkanCommandBuffer {
             device: device,
             resources: resources,
             swap_chain: swap_chain,
-            render_pass: render_pass,
             pipeline: pipeline,
             command_buffer: command_buffer[0],
             buffer: Vec::new(),
-            hacky_image_index: hacky_image_index,
             invalidated: false,
         } )
     }
@@ -347,9 +339,9 @@ impl CommandBuffer for VulkanCommandBuffer {
         */
 
         let inheritance_info = vk::CommandBufferInheritanceInfo {
-            render_pass: self.render_pass.render_pass,
+            render_pass: self.resources.get_render_pass(),
             subpass: 0,
-            framebuffer: self.render_pass.frame_buffers[self.hacky_image_index],
+            framebuffer: self.resources.get_frame_buffer(),
             ..Default::default()
         };
 

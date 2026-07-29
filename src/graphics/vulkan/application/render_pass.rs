@@ -22,8 +22,7 @@ pub struct VulkanRenderPass {
     depth_memory: vk::DeviceMemory,
     depth_view: vk::ImageView,
     pub render_pass: vk::RenderPass,
-    pub frame_buffers: Vec<vk::Framebuffer>,
-    pub frame_buffer_semaphore: Vec<vk::Semaphore>
+    pub frame_buffers: Vec<vk::Framebuffer>
 }
 
 fn find_supported_format(
@@ -313,30 +312,13 @@ impl VulkanRenderPass {
             swap_chain_image_views
         )?;
 
-        let mut semaphores = Vec::new();
-
-        for i in 0..swap_chain_image_views.len() {
-            let create_info = vk::SemaphoreCreateInfo {
-                ..Default::default()
-            };
-
-            match unsafe { device.device.create_semaphore(&create_info, None) } {
-                Ok(semaphore) => semaphores.push(semaphore),
-                Err(err) => {
-                    println!("Could not create {}th semaphore! {}", i, err);
-                    return Err(RenderPassError);
-                }
-            };
-        }
-
         Ok( Self {
             device: device,
             depth_image: depth_image,
             depth_memory: depth_image_memory,
             depth_view: depth_image_view,
             render_pass: render_pass,
-            frame_buffers: frame_buffers,
-            frame_buffer_semaphore: semaphores
+            frame_buffers: frame_buffers
         } )
     }
 }
@@ -344,10 +326,6 @@ impl VulkanRenderPass {
 impl Drop for VulkanRenderPass {
     fn drop(&mut self) {
         unsafe {
-            self.frame_buffer_semaphore.iter().for_each(|semaphore| {
-                self.device.device.destroy_semaphore(*semaphore, None);
-            });
-
             self.device.device.destroy_image(self.depth_image, None);
             self.device.device.free_memory(self.depth_memory, None);
             self.device.device.destroy_image_view(self.depth_view, None);
