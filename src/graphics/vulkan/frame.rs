@@ -20,7 +20,7 @@ pub struct VulkanFrame {
     resources: Arc<VulkanFrameResources>,
     pipeline: Arc<VulkanPipeline>,
     command_buffer: vk::CommandBuffer,
-    submitted_command_buffer: Mutex<Option<vk::CommandBuffer>>,
+    submitted_command_buffers: Mutex<Vec<vk::CommandBuffer>>,
     image_available: vk::Semaphore,
     work_complete: vk::Semaphore,
     work_in_flight: vk::Fence
@@ -57,7 +57,7 @@ impl VulkanFrame {
             pipeline: pipeline,
             resources: resources,
             command_buffer: command_buffer,
-            submitted_command_buffer: Mutex::new(None),
+            submitted_command_buffers: Mutex::new(Vec::new()),
             image_available: image_available,
             work_complete: work_complete,
             work_in_flight: work_in_flight
@@ -87,12 +87,12 @@ impl Frame for VulkanFrame {
     }
 
     fn submit_command_buffer(&self, buffer: Self::T) -> Result<(), FrameError> {
-        let mut submitted_buffer = self.submitted_command_buffer.lock().map_err(|err| {
+        let mut submitted_buffers = self.submitted_command_buffers.lock().map_err(|err| {
             println!("Mutex on command buffer is poisoned {}", err);
             FrameError
         })?;
 
-        *submitted_buffer = Some(buffer.command_buffer);
+        submitted_buffers.push(buffer.command_buffer);
 
         Ok(())
     }
@@ -149,19 +149,12 @@ impl Frame for VulkanFrame {
     }
 
     fn end_frame(&self) -> Result<(), FrameError> {
-        let submitted_command_buffer_guard = self.submitted_command_buffer.lock().map_err(|err| {
+        let submitted_command_buffers_guard = self.submitted_command_buffers.lock().map_err(|err| {
             println!("Mutex on submitted command buffer is poisoned {}", err);
             FrameError
         })?;
 
-        if submitted_command_buffer_guard.is_none() {
-            println!("Submitted command buffer is unexpectedly none when something is expected");
-            return Err(FrameError);
-        }
-
-        let secondary_buffers = [ submitted_command_buffer_guard.unwrap() ];
-
-        unsafe { self.device.device.cmd_execute_commands(self.command_buffer, &secondary_buffers) };
+        unsafe { self.device.device.cmd_execute_commands(self.command_buffer, &submitted_command_buffers_guard) };
 
         unsafe { self.device.device.cmd_end_render_pass(self.command_buffer); };
 
@@ -221,18 +214,15 @@ impl Drop for VulkanFrame {
     fn drop(&mut self) {
         unsafe {
             self.device.device.free_command_buffers(self.device.command_pool, &[self.command_buffer]);
+        }
 
-            match self.submitted_command_buffer.lock() {
-                Ok(mut submitted_buffer) => {
-                    if submitted_buffer.is_some() {
-                        unsafe { self.device.device.free_command_buffers(self.device.command_pool, &[ submitted_buffer.unwrap() ]) };
-                        *submitted_buffer = None;
-                    }                    
-                },
-                Err(err) => {
-                    println!("Mutex on command buffer is poisoned {}", err);
-                }
-            };
+        match self.submitted_command_buffers.lock() {
+            Ok(submitted_buffers) => {
+                unsafe { self.device.device.free_command_buffers(self.device.command_pool, &submitted_buffers) };
+            },
+            Err(err) => {
+                println!("Mutex on command buffer is poisoned {}", err);
+            }
         }
     }
 }

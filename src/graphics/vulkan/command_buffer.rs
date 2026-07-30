@@ -5,6 +5,7 @@
 use super::super::hal::command_buffer::{
     CommandBuffer, CommandBufferError, DrawIndexedPacket, CopyBufferPacket
 };
+use super::super::hal::resources::{ Resources, WriteModelBuffer, WriteVertexBuffer, WriteIndexBuffer };
 use super::super::hal::stucts::{ Camera, UniformBufferObject, Vertex };
 use super::frame_resources::{ VulkanFrameResources };
 use super::hardware::swapchain::{ VulkanSwapchain };
@@ -129,6 +130,70 @@ fn push_copy_buffer(
     Ok(())
 }
 
+fn copy_cpu_staging_buffer_to_gpu(
+    device: Arc<VulkanDevice>,
+    staging_buffer: vk::Buffer,
+    buffer: vk::Buffer,
+    bytes: usize
+) -> Result<(), CommandBufferError> {
+    let alloc_info = vk::CommandBufferAllocateInfo {
+        level: vk::CommandBufferLevel::PRIMARY,
+        command_buffer_count: 1,
+        command_pool: device.command_pool,
+        ..Default::default()
+    };
+
+    let command_buffer = unsafe { device.device.allocate_command_buffers(&alloc_info).map_err(|err| {
+        println!("Error creating transfer command buffer {}", err);
+        CommandBufferError
+    }) }?[0];
+
+    let begin_buffer_info = vk::CommandBufferBeginInfo {
+        flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
+        ..Default::default()
+    };
+
+    unsafe {
+        device.device.begin_command_buffer(command_buffer, &begin_buffer_info).map_err(|err| {
+            println!("Error beginning transfer command buffer {}", err);
+            CommandBufferError
+        })?;
+    }
+
+    let copy_region = vk::BufferCopy {
+        src_offset: 0,
+        dst_offset: 0,
+        size: bytes as u64,
+        ..Default::default()
+    };
+
+    unsafe { device.device.cmd_copy_buffer(command_buffer, staging_buffer, buffer, &[copy_region]) };
+    unsafe { device.device.end_command_buffer(command_buffer).map_err(|err| {
+        println!("Error ending transfer command buffer {}", err);
+        CommandBufferError
+    }) }?;
+
+    let submit_info = vk::SubmitInfo {
+        command_buffer_count: 1,
+        p_command_buffers: [ command_buffer ].as_ptr(),
+        ..Default::default()
+    };
+
+    unsafe { device.device.queue_submit(device.queues.graphics_queue, &[submit_info], vk::Fence::null()).map_err(|err| {
+        println!("Error submitting command buffer to queue {}", err);
+        CommandBufferError
+    }) }?;
+
+    unsafe { device.device.queue_wait_idle(device.queues.graphics_queue).map_err(|err| {
+        println!("Error waiting for queue to be idle {}", err);
+        CommandBufferError
+    }) }?;
+
+    unsafe { device.device.free_command_buffers(device.command_pool, &[ command_buffer ]) };
+
+    Ok(())
+}
+
 fn push_face(
     vertex_0: glm::Vec3,
     vertex_1: glm::Vec3,
@@ -234,71 +299,6 @@ fn create_cube(
     push_top_face(v0, vertices, indices);
     push_bottom_face(v0, vertices, indices);
 }
-
-fn copy_cpu_staging_buffer_to_gpu(
-    device: Arc<VulkanDevice>,
-    staging_buffer: vk::Buffer,
-    buffer: vk::Buffer,
-    bytes: usize
-) -> Result<(), CommandBufferError> {
-    let alloc_info = vk::CommandBufferAllocateInfo {
-        level: vk::CommandBufferLevel::PRIMARY,
-        command_buffer_count: 1,
-        command_pool: device.command_pool,
-        ..Default::default()
-    };
-
-    let command_buffer = unsafe { device.device.allocate_command_buffers(&alloc_info).map_err(|err| {
-        println!("Error creating transfer command buffer {}", err);
-        CommandBufferError
-    }) }?[0];
-
-    let begin_buffer_info = vk::CommandBufferBeginInfo {
-        flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
-        ..Default::default()
-    };
-
-    unsafe {
-        device.device.begin_command_buffer(command_buffer, &begin_buffer_info).map_err(|err| {
-            println!("Error beginning transfer command buffer {}", err);
-            CommandBufferError
-        })?;
-    }
-
-    let copy_region = vk::BufferCopy {
-        src_offset: 0,
-        dst_offset: 0,
-        size: bytes as u64,
-        ..Default::default()
-    };
-
-    unsafe { device.device.cmd_copy_buffer(command_buffer, staging_buffer, buffer, &[copy_region]) };
-    unsafe { device.device.end_command_buffer(command_buffer).map_err(|err| {
-        println!("Error ending transfer command buffer {}", err);
-        CommandBufferError
-    }) }?;
-
-    let submit_info = vk::SubmitInfo {
-        command_buffer_count: 1,
-        p_command_buffers: [ command_buffer ].as_ptr(),
-        ..Default::default()
-    };
-
-    unsafe { device.device.queue_submit(device.queues.graphics_queue, &[submit_info], vk::Fence::null()).map_err(|err| {
-        println!("Error submitting command buffer to queue {}", err);
-        CommandBufferError
-    }) }?;
-
-    unsafe { device.device.queue_wait_idle(device.queues.graphics_queue).map_err(|err| {
-        println!("Error waiting for queue to be idle {}", err);
-        CommandBufferError
-    }) }?;
-
-    unsafe { device.device.free_command_buffers(device.command_pool, &[ command_buffer ]) };
-
-    Ok(())
-}
-
 
 impl CommandBuffer for VulkanCommandBuffer {
     fn draw_indexed(&mut self, packet: DrawIndexedPacket) -> Result<(), CommandBufferError> {
@@ -426,14 +426,13 @@ impl CommandBuffer for VulkanCommandBuffer {
             )
         };
 
-        let uniform_pointer = self.resources.get_model_buffer_pointer().map_err(|err| {
-            println!("Error getting model buffer pointer {:?}", err);
+        unsafe { self.resources.buffer_model_data_cpu_side(WriteModelBuffer {
+            offset: 0,
+            model: model_matrix
+        }).map_err(|err| {
+            println!("Error buffering model {:?}", err);
             CommandBufferError
-        })?;
-
-        unsafe {
-            *(uniform_pointer as *mut UniformBufferObject) = model_matrix;
-        }
+        }) }?;
 
         let descriptor_set = self.resources.get_descriptor_set().map_err(|err| {
             println!("Error getting model buffer pointer {:?}", err);
@@ -457,20 +456,21 @@ impl CommandBuffer for VulkanCommandBuffer {
         let mut index_list = Vec::new();
         create_cube(&mut vertex_list, &mut index_list);
 
-        let vertex_pointer = self.resources.get_vertex_buffer_pointer().map_err(|err| {
-            println!("Error getting vertex buffer pointer {:?}", err);
+        unsafe { self.resources.buffer_vertex_data_cpu_side(WriteVertexBuffer {
+            offset: 0,
+            vertices: &vertex_list
+        }).map_err(|err| {
+            println!("Error buffering vertices {:?}", err);
             CommandBufferError
-        })? as *mut Vertex;
+        }) }?;
 
-        let index_pointer = self.resources.get_index_buffer_pointer().map_err(|err| {
-            println!("Error getting index buffer pointer {:?}", err);
+        unsafe { self.resources.buffer_index_data_cpu_side(WriteIndexBuffer {
+            offset: 0,
+            indices: &index_list
+        }).map_err(|err| {
+            println!("Error buffering indices {:?}", err);
             CommandBufferError
-        })? as *mut u32;
-
-        unsafe {
-            std::ptr::copy_nonoverlapping(vertex_list.as_ptr(), vertex_pointer, vertex_list.len());
-            std::ptr::copy_nonoverlapping(index_list.as_ptr(), index_pointer, index_list.len());
-        }
+        }) }?;
 
         copy_cpu_staging_buffer_to_gpu(
             self.device.clone(),
