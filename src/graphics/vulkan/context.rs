@@ -32,10 +32,11 @@ struct SwapchainViewContext {
  */
 pub struct VulkanContext {
     device: Arc<VulkanDevice>,
-    swapchain: Arc<VulkanSwapchain>,
+    window: Window,
+    swapchain: Option<Arc<VulkanSwapchain>>,
     resources: Arc<VulkanResources>,
-    render_pass: Arc<VulkanRenderPass>,
-    pipeline: Arc<VulkanPipeline>,
+    render_pass: Option<Arc<VulkanRenderPass>>,
+    pipeline: Option<Arc<VulkanPipeline>>,
     frame_contexts: Vec<FrameContext>,
     swap_chain_contexts: Vec<SwapchainViewContext>,
     frames: Vec<Option<Arc<VulkanFrame>>>,
@@ -43,19 +44,11 @@ pub struct VulkanContext {
 }
 
 impl VulkanContext {
-    pub fn new(window: &Window) -> Result<Self, ContextError> {
+    pub fn new(window: Window) -> Result<Self, ContextError> {
         let device = unsafe { match VulkanDevice::new(&window) {
             Ok(device) => Arc::new(device),
             Err(err) => {
                 println!("Error creating vulkan device {:?}", err);
-                return Err(ContextError);
-            }
-        } };
-
-        let swap_chain = unsafe { match VulkanSwapchain::new(device.clone(), &window) {
-            Ok(swap_chain) => Arc::new(swap_chain),
-            Err(err) => {
-                println!("Error creating vulkan swapchain {:?}", err);
                 return Err(ContextError);
             }
         } };
@@ -66,7 +59,15 @@ impl VulkanContext {
                 println!("Error creating vulkan resources {:?}", err);
                 return Err(ContextError);
             }
-        };
+        };        
+
+        let swap_chain = unsafe { match VulkanSwapchain::new(device.clone(), &window) {
+            Ok(swap_chain) => Arc::new(swap_chain),
+            Err(err) => {
+                println!("Error creating vulkan swapchain {:?}", err);
+                return Err(ContextError);
+            }
+        } };
 
         let render_pass = match VulkanRenderPass::new(device.clone(), &swap_chain) {
             Ok(render_pass) => Arc::new(render_pass),
@@ -144,10 +145,11 @@ impl VulkanContext {
 
         Ok( Self {
             device: device,
-            swapchain: swap_chain,
+            window: window,
+            swapchain: Some(swap_chain),
             resources: resources,
-            render_pass: render_pass,
-            pipeline: pipeline,
+            render_pass: Some(render_pass),
+            pipeline: Some(pipeline),
             frame_contexts: frame_contexts,
             swap_chain_contexts: swap_chain_contexts,
             frames: frames,
@@ -172,18 +174,18 @@ impl Context for VulkanContext {
             ContextError
         }) }?;
 
-        let (image_index, _) = unsafe { self.device.swapchain_extension.acquire_next_image(self.swapchain.swap_chain, u64::MAX, context.image_available_gpu, vk::Fence::null()).map_err(|err| {
+        let (image_index, _) = unsafe { self.device.swapchain_extension.acquire_next_image(self.swapchain.clone().unwrap().swap_chain, u64::MAX, context.image_available_gpu, vk::Fence::null()).map_err(|err| {
             println!("Error acquiring next frame from swap chain {}", err);
             ContextError
         }) }?;
 
-        let frame_resources = Arc::new(VulkanFrameResources::new(self.device.clone(), self.resources.clone(), self.render_pass.clone(), self.frame_number, image_index));
+        let frame_resources = Arc::new(VulkanFrameResources::new(self.device.clone(), self.resources.clone(), self.render_pass.clone().unwrap(), self.frame_number, image_index));
 
         let next_frame = match VulkanFrame::new(
             self.device.clone(),
             frame_resources,
-            self.swapchain.clone(),
-            self.pipeline.clone(),
+            self.swapchain.clone().unwrap(),
+            self.pipeline.clone().unwrap(),
             context.image_available_gpu,
             self.swap_chain_contexts[image_index as usize].work_complete_gpu,
             context.in_flight_fence,
@@ -198,6 +200,47 @@ impl Context for VulkanContext {
         self.frames[self.frame_number] = Some(next_frame.clone());
         self.frame_number = (self.frame_number + 1) % self.frame_contexts.len();
         Ok(next_frame)
+    }
+
+    fn window_resize(&mut self) -> Result<(), ContextError> {
+        let _ = unsafe { self.device.device.device_wait_idle() }.map_err(|err| {
+            println!("Error waiting for device to be idle {:?}", err);
+            ContextError
+        })?;
+
+        self.swapchain = None;
+        self.render_pass = None;
+        self.pipeline = None;
+
+        for i in 0..self.frames.len() {
+            self.frames[i] = None;
+        }
+
+        self.swapchain = unsafe { match VulkanSwapchain::new(self.device.clone(), &self.window) {
+            Ok(swap_chain) => Some(Arc::new(swap_chain)),
+            Err(err) => {
+                println!("Error creating vulkan swapchain {:?}", err);
+                return Err(ContextError);
+            }
+        } };
+
+        self.render_pass = match VulkanRenderPass::new(self.device.clone(), &self.swapchain.clone().unwrap()) {
+            Ok(render_pass) => Some(Arc::new(render_pass)),
+            Err(err) => {
+                println!("Error creating vulkan render pass {:?}", err);
+                return Err(ContextError);
+            }
+        };
+
+        self.pipeline = match VulkanPipeline::new(self.device.clone(), self.swapchain.clone().unwrap(), self.render_pass.clone().unwrap()) {
+            Ok(pipeline) => Some(Arc::new(pipeline)),
+            Err(err) => {
+                println!("Error creating vulkan pipeline {:?}", err);
+                return Err(ContextError);
+            }
+        };
+
+        Ok(())
     }
 }
 

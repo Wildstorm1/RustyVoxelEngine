@@ -204,6 +204,15 @@ impl <T: Context> Renderer<T> {
 
         Ok(())
     }
+
+    pub fn window_resize(&mut self) -> Result<(), RendererError> {
+        self.context.window_resize().map_err(|err| {
+            println!("Error resizing window {:?}", err);
+            RendererError
+        })?;
+
+        Ok(())
+    }
 }
 
 /*

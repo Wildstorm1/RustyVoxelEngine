@@ -21,4 +21,9 @@ pub trait Context {
      * Returns the next frame for recording
      */
     fn next_frame(&mut self) -> Result<Arc<Self::T>, ContextError>;
+
+    /*
+     * Handles rebuilding when the window resizes
+     */
+    fn window_resize(&mut self) -> Result<(), ContextError>;
 }
