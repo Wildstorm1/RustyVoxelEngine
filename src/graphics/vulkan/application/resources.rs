@@ -3,26 +3,28 @@
  */
 
 use super::super::super::hal::resources::{
-    ResourcesError, Buffer, Uniform
+    ResourcesError, Buffer, Uniform, BufferHandles, UniformHandles
 };
 use super::super::super::hal::stucts::{ UniformBufferObject };
 use super::super::hardware::device::{ VulkanDevice };
+use std::collections::HashMap;
 use std::ffi::{ c_void };
 use std::sync::{ Arc };
 use ash::{ vk };
 
+#[derive(Clone, Copy)]
 pub struct BufferData {
     pub buffer: vk::Buffer,
-    memory: vk::DeviceMemory,
-    pub staging_buffer: vk::Buffer,
-    staging_memory: vk::DeviceMemory,
-    pub mapping: *mut c_void
+    pub memory: vk::DeviceMemory,
+    pub bytes: u64
 }
 
-pub struct UniformData {
-    buffer: vk::Buffer,
-    memory: vk::DeviceMemory,
-    pub mapping: *mut c_void
+#[derive(Clone, Copy)]
+pub struct MappedBufferData {
+    pub buffer: vk::Buffer,
+    pub memory: vk::DeviceMemory,
+    pub mapping: *mut c_void,
+    pub bytes: u64
 }
 
 /*
@@ -30,14 +32,11 @@ pub struct UniformData {
  */
 pub struct VulkanResources {
     device: Arc<VulkanDevice>,
-    vertex_handle: Buffer,
-    pub vertex_data: BufferData,
-    index_handle: Buffer,
-    pub index_data: BufferData,
-    frame1_uniform_handle: Uniform,
-    pub frame1_uniform_data: UniformData,
-    frame2_uniform_handle: Uniform,
-    pub frame2_uniform_data: UniformData,
+    buffer_handles: HashMap<Buffer, BufferData>,
+    staging_handles: HashMap<Buffer, MappedBufferData>,
+    uniform_handles: HashMap<Uniform, MappedBufferData>,
+    buffer_mappings: HashMap<BufferHandles, Buffer>,
+    uniform_mappings: HashMap<UniformHandles, Uniform>,
 }
 
 fn find_memory_type(
@@ -63,7 +62,7 @@ fn create_buffer(
     size: u64,
     usage_flags: vk::BufferUsageFlags,
     properties: vk::MemoryPropertyFlags
-) -> Result<(vk::Buffer, vk::DeviceMemory), ResourcesError> {
+) -> Result<BufferData, ResourcesError> {
     let create_info = vk::BufferCreateInfo {
         size: size,
         usage: usage_flags,
@@ -104,7 +103,11 @@ fn create_buffer(
         }
     }
 
-    Ok((buffer, device_memory))
+    Ok(BufferData {
+        buffer: buffer,
+        memory: device_memory,
+        bytes: size
+    })
 }
 
 fn create_mapped_buffer(
@@ -112,10 +115,10 @@ fn create_mapped_buffer(
     size: u64,
     usage_flags: vk::BufferUsageFlags,
     properties: vk::MemoryPropertyFlags
-) -> Result<(vk::Buffer, vk::DeviceMemory, *mut c_void), ResourcesError> {
-    let (buffer, device_memory) = create_buffer(&device, size, usage_flags, properties)?;
+) -> Result<MappedBufferData, ResourcesError> {
+    let buffer_data = create_buffer(&device, size, usage_flags, properties)?;
 
-    let cpu_mapped_memory = match unsafe { device.device.map_memory(device_memory, 0, size, vk::MemoryMapFlags::empty()) } {
+    let cpu_mapped_memory = match unsafe { device.device.map_memory(buffer_data.memory, 0, size, vk::MemoryMapFlags::empty()) } {
         Ok(mapped_memory) => mapped_memory,
         Err(err) => {
             println!("Error mapping memory to cpu space {}", err);
@@ -123,29 +126,28 @@ fn create_mapped_buffer(
         },
     };
 
-    Ok((buffer, device_memory, cpu_mapped_memory))
+    Ok(MappedBufferData {
+        buffer: buffer_data.buffer,
+        memory: buffer_data.memory,
+        mapping: cpu_mapped_memory,
+        bytes: size,
+    })
 }
 
 fn create_staged_buffer(
     device: &VulkanDevice,
     usage_flag: vk::BufferUsageFlags,
     size: u64,
-) -> Result<BufferData, ResourcesError> {
+) -> Result<(BufferData, MappedBufferData), ResourcesError> {
     let usage_flags = usage_flag | vk::BufferUsageFlags::TRANSFER_DST;
     let properties = vk::MemoryPropertyFlags::DEVICE_LOCAL;
-    let (gpu_buffer, gpu_device_memory) = create_buffer(&device, size, usage_flags, properties)?;
+    let gpu_buffer = create_buffer(&device, size, usage_flags, properties)?;
 
     let usage_flags = vk::BufferUsageFlags::TRANSFER_SRC;
     let properties = vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT;
-    let (cpu_staging_buffer, cpu_staging_device_memory, cpu_mapped_memory) = create_mapped_buffer(&device, size, usage_flags, properties)?;
+    let cpu_staging_buffer = create_mapped_buffer(&device, size, usage_flags, properties)?;
 
-    return Ok(BufferData {
-        buffer: gpu_buffer,
-        memory: gpu_device_memory,
-        staging_buffer: cpu_staging_buffer,
-        staging_memory: cpu_staging_device_memory,
-        mapping: cpu_mapped_memory
-    });
+    return Ok((gpu_buffer, cpu_staging_buffer));
 }
 
 fn bind_uniform_to_descriptor_set(
@@ -180,80 +182,150 @@ impl VulkanResources {
 
         let usage_flags = vk::BufferUsageFlags::UNIFORM_BUFFER;
         let properties = vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT;
-        let (model_buffer_1, model_buffer_memory_1, model_mapped_memory_1) = create_mapped_buffer(&device, 2500000000, usage_flags, properties)?;
-        bind_uniform_to_descriptor_set(&device, device.descriptor_sets[0], model_buffer_1);
+        let model_buffer_1 = create_mapped_buffer(&device, 2500000000, usage_flags, properties)?;
+        bind_uniform_to_descriptor_set(&device, device.descriptor_sets[0], model_buffer_1.buffer);
 
         let usage_flags = vk::BufferUsageFlags::UNIFORM_BUFFER;
         let properties = vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT;
-        let (model_buffer_2, model_buffer_memory_2, model_mapped_memory_2) = create_mapped_buffer(&device, 2500000000, usage_flags, properties)?;
-        bind_uniform_to_descriptor_set(&device, device.descriptor_sets[1], model_buffer_2);
+        let model_buffer_2 = create_mapped_buffer(&device, 2500000000, usage_flags, properties)?;
+        bind_uniform_to_descriptor_set(&device, device.descriptor_sets[1], model_buffer_2.buffer);
+
+        let vertex_handle = Buffer { handle: 0 }; // Vertex Buffer
+        let index_handle = Buffer { handle: 1 }; // Index Buffer
+        let vertex_staging_handle = Buffer { handle: 2 }; // Vertex Staging Buffer
+        let index_staging_handle = Buffer { handle: 3 }; // Index Staging Buffer
+        let frame_1_uniform_handle = Uniform { handle: 0 }; // Frame 1 Models
+        let frame_2_uniform_handle = Uniform { handle: 1 }; // Frame 2 Models
+
+        let mut buffer_handles = HashMap::new();
+        let mut staging_handles = HashMap::new();
+        let mut uniform_handles = HashMap::new();
+
+        buffer_handles.insert(vertex_handle.clone(), vertex_buffer.0);
+        buffer_handles.insert(index_handle.clone(), index_buffer.0);
+        staging_handles.insert(vertex_staging_handle.clone(), vertex_buffer.1);
+        staging_handles.insert(index_staging_handle.clone(), index_buffer.1);
+        uniform_handles.insert(frame_1_uniform_handle.clone(), model_buffer_1);
+        uniform_handles.insert(frame_2_uniform_handle.clone(), model_buffer_2);
+
+        let mut buffer_mappings = HashMap::new();
+        let mut uniform_mappings = HashMap::new();
+
+        buffer_mappings.insert(BufferHandles::VertexCPU, vertex_staging_handle);
+        buffer_mappings.insert(BufferHandles::VertexGPU, vertex_handle);
+        buffer_mappings.insert(BufferHandles::IndexCPU, index_staging_handle);
+        buffer_mappings.insert(BufferHandles::IndexGPU, index_handle);
+        uniform_mappings.insert(UniformHandles::ModelsFrame1CPU, frame_1_uniform_handle);
+        uniform_mappings.insert(UniformHandles::ModelsFrame2CPU, frame_2_uniform_handle);
 
         Ok(Self {
             device: device,
-            vertex_handle: Buffer {
-                handle: 0
-            },
-            vertex_data: vertex_buffer,
-            index_handle: Buffer {
-                handle: 1
-            },
-            index_data: index_buffer,
-            frame1_uniform_handle: Uniform {
-                handle: 0
-            },
-            frame1_uniform_data: UniformData {
-                buffer: model_buffer_1,
-                memory: model_buffer_memory_1,
-                mapping: model_mapped_memory_1,
-            },
-            frame2_uniform_handle: Uniform {
-                handle: 1
-            },
-            frame2_uniform_data: UniformData {
-                buffer: model_buffer_2,
-                memory: model_buffer_memory_2,
-                mapping: model_mapped_memory_2,
-            },
+            buffer_handles: buffer_handles,
+            staging_handles: staging_handles,
+            uniform_handles: uniform_handles,
+            buffer_mappings: buffer_mappings,
+            uniform_mappings: uniform_mappings,
         })
     }
 
-    pub fn get_vertex_buffer_handle(&self) -> Result<Buffer, ResourcesError> {
-        Ok(self.vertex_handle)
+    pub fn get_buffer_handle(&self, label: BufferHandles) -> Result<Buffer, ResourcesError> {
+        let handle = self.buffer_mappings.get(&label);
+
+        match handle {
+            Some(handle) => Ok(*handle),
+            None => Err(ResourcesError)
+        }
     }
 
-    pub fn get_index_buffer_handle(&self) -> Result<Buffer, ResourcesError> {
-        Ok(self.index_handle)
+    pub fn get_uniform_handle(&self, label: UniformHandles) -> Result<Uniform, ResourcesError> {
+        let handle = self.uniform_mappings.get(&label);
+
+        match handle {
+            Some(handle) => Ok(*handle),
+            None => Err(ResourcesError)
+        }
     }
 
-    pub fn get_model_buffer_frame1_handle(&self) -> Result<Uniform, ResourcesError> {
-        Ok(self.frame1_uniform_handle)
+    pub fn get_vulkan_buffer_handle(&self, label: BufferHandles) -> Result<vk::Buffer, ResourcesError> {
+        let handle = self.get_buffer_handle(label)?;
+        self.get_vulkan_buffer_handle_from_handle(handle)
     }
 
-    pub fn get_model_buffer_frame2_handle(&self) -> Result<Uniform, ResourcesError> {
-        Ok(self.frame2_uniform_handle)
+    pub fn get_vulkan_uniform_handle(&self, label: UniformHandles) -> Result<vk::Buffer, ResourcesError> {
+        let handle = self.get_uniform_handle(label)?;
+        self.get_vulkan_uniform_handle_from_handle(handle)
+    }
+
+    pub fn get_vulkan_buffer_handle_from_handle(&self, handle: Buffer) -> Result<vk::Buffer, ResourcesError> {
+        let buffer_data = self.buffer_handles.get(&handle);
+        let staging_data = self.staging_handles.get(&handle);
+
+        match buffer_data {
+            Some(buffer_data) => return Ok(buffer_data.buffer),
+            _ => {}
+        }
+
+        match staging_data {
+            Some(staging_data) => Ok(staging_data.buffer),
+            None => Err(ResourcesError)
+        }
+    }
+
+    pub fn get_vulkan_uniform_handle_from_handle(&self, handle: Uniform) -> Result<vk::Buffer, ResourcesError> {
+        let buffer_data = self.uniform_handles.get(&handle);
+
+        match buffer_data {
+            Some(buffer_data) => Ok(buffer_data.buffer),
+            None => Err(ResourcesError)
+        }
+    }
+
+    pub fn get_vulkan_buffer_pointer(&self, label: BufferHandles) -> Result<*mut c_void, ResourcesError> {
+        let handle = self.get_buffer_handle(label)?;
+        self.get_vulkan_buffer_pointer_from_handle(handle)
+    }
+
+    pub fn get_vulkan_uniform_pointer(&self, label: UniformHandles) -> Result<*mut c_void, ResourcesError> {
+        let handle = self.get_uniform_handle(label)?;
+        self.get_vulkan_uniform_pointer_from_handle(handle)
+    }
+
+    pub fn get_vulkan_buffer_pointer_from_handle(&self, handle: Buffer) -> Result<*mut c_void, ResourcesError> {
+        let staging_data = self.staging_handles.get(&handle);
+
+        match staging_data {
+            Some(staging_data) => Ok(staging_data.mapping),
+            None => Err(ResourcesError)
+        }
+    }
+
+    pub fn get_vulkan_uniform_pointer_from_handle(&self, handle: Uniform) -> Result<*mut c_void, ResourcesError> {
+        let buffer_data = self.uniform_handles.get(&handle);
+
+        match buffer_data {
+            Some(buffer_data) => Ok(buffer_data.mapping),
+            None => Err(ResourcesError)
+        }
     }
 }
 
 impl Drop for VulkanResources {
     fn drop(&mut self) {
         unsafe {
-            self.device.device.destroy_buffer(self.vertex_data.buffer, None);
-            self.device.device.free_memory(self.vertex_data.memory, None);
-    
-            self.device.device.destroy_buffer(self.vertex_data.staging_buffer, None);
-            self.device.device.free_memory(self.vertex_data.staging_memory, None);
-        
-            self.device.device.destroy_buffer(self.index_data.buffer, None);
-            self.device.device.free_memory(self.index_data.memory, None);
+            self.buffer_handles.values().into_iter().for_each(|handle_data| {
+                self.device.device.destroy_buffer(handle_data.buffer, None);
+                self.device.device.free_memory(handle_data.memory, None);
+            });
 
-            self.device.device.destroy_buffer(self.index_data.staging_buffer, None);
-            self.device.device.free_memory(self.index_data.staging_memory, None);
+            self.staging_handles.values().into_iter().for_each(|handle_data| {
+                self.device.device.destroy_buffer(handle_data.buffer, None);
+                self.device.device.free_memory(handle_data.memory, None);
+            });
 
-            self.device.device.destroy_buffer(self.frame1_uniform_data.buffer, None);
-            self.device.device.free_memory(self.frame1_uniform_data.memory, None);
-
-            self.device.device.destroy_buffer(self.frame2_uniform_data.buffer, None);
-            self.device.device.free_memory(self.frame2_uniform_data.memory, None);
+            self.uniform_handles.values().into_iter().for_each(|handle_data| {
+                self.device.device.destroy_buffer(handle_data.buffer, None);
+                self.device.device.free_memory(handle_data.memory, None);
+            });
         }
     }
 }

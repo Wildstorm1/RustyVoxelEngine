@@ -19,10 +19,12 @@ pub struct VulkanFrame {
     swap_chain: Arc<VulkanSwapchain>,
     resources: Arc<VulkanFrameResources>,
     pipeline: Arc<VulkanPipeline>,
-    command_buffer: vk::CommandBuffer,
+    sync_command_buffer: vk::CommandBuffer,
+    graphics_command_buffer: vk::CommandBuffer,
     submitted_command_buffers: Mutex<Vec<vk::CommandBuffer>>,
     image_available: vk::Semaphore,
     work_complete: vk::Semaphore,
+    transfer_complete: vk::Semaphore,
     work_in_flight: vk::Fence
 }
 
@@ -34,17 +36,18 @@ impl VulkanFrame {
         pipeline: Arc<VulkanPipeline>,
         image_available: vk::Semaphore,
         work_complete: vk::Semaphore,
+        transfer_complete: vk::Semaphore,
         work_in_flight: vk::Fence
     ) -> Result<Self, FrameError> {
         let frame_buffer_info = vk::CommandBufferAllocateInfo {
             command_pool: device.command_pool,
             level: vk::CommandBufferLevel::PRIMARY,
-            command_buffer_count: 1,
+            command_buffer_count: 2,
             ..Default::default()
         };
 
-        let command_buffer =  match unsafe { device.device.allocate_command_buffers(&frame_buffer_info) } {
-            Ok(buffers) => buffers[0],
+        let command_buffers =  match unsafe { device.device.allocate_command_buffers(&frame_buffer_info) } {
+            Ok(buffers) => buffers,
             Err(err) => {
                 println!("Error allocating frame command buffer {}", err);
                 return Err(FrameError);
@@ -56,11 +59,13 @@ impl VulkanFrame {
             swap_chain: swap_chain,
             pipeline: pipeline,
             resources: resources,
-            command_buffer: command_buffer,
+            graphics_command_buffer: command_buffers[0],
+            sync_command_buffer: command_buffers[1],
             submitted_command_buffers: Mutex::new(Vec::new()),
             image_available: image_available,
             work_complete: work_complete,
-            work_in_flight: work_in_flight
+            work_in_flight: work_in_flight,
+            transfer_complete: transfer_complete,
         })
     }
 }
@@ -97,8 +102,8 @@ impl Frame for VulkanFrame {
         Ok(())
     }
 
-    fn begin_frame(&self) -> Result<(), FrameError> {
-        unsafe { self.device.device.reset_command_buffer(self.command_buffer, vk::CommandBufferResetFlags::empty()).map_err(|err| {
+    fn begin_sync(&self) -> Result<(), FrameError> {
+        unsafe { self.device.device.reset_command_buffer(self.sync_command_buffer, vk::CommandBufferResetFlags::empty()).map_err(|err| {
             println!("Error resetting command buffer {}", err);
             FrameError
         }) }?;
@@ -107,7 +112,61 @@ impl Frame for VulkanFrame {
             ..Default::default()
         };
 
-        unsafe { self.device.device.begin_command_buffer(self.command_buffer, &begin_info).map_err(|err| {
+        unsafe { self.device.device.begin_command_buffer(self.sync_command_buffer, &begin_info).map_err(|err| {
+            println!("Error beginning command buffer {}", err);
+            FrameError
+        }) }?;
+
+        Ok(())
+    }
+
+    fn end_sync(&self) -> Result<(), FrameError> {
+        let submitted_command_buffers_guard = self.submitted_command_buffers.lock().map_err(|err| {
+            println!("Mutex on submitted command buffer is poisoned {}", err);
+            FrameError
+        })?;
+
+        unsafe { self.device.device.cmd_execute_commands(self.sync_command_buffer, &submitted_command_buffers_guard) };
+
+        unsafe { self.device.device.end_command_buffer(self.sync_command_buffer).map_err(|err| {
+            println!("Error ending transfer command buffer {}", err);
+            FrameError
+        }) }?;
+
+        Ok(())
+    }
+
+    fn sync(&self) -> Result<(), FrameError> {
+        // TODO: Need primitive
+        let signal_semaphores = [ self.transfer_complete ];
+
+        let submit_info = vk::SubmitInfo {
+            command_buffer_count: 1,
+            p_command_buffers: [ self.sync_command_buffer ].as_ptr(),
+            signal_semaphore_count: 1,
+            p_signal_semaphores: signal_semaphores.as_ptr(),
+            ..Default::default()
+        };
+
+        unsafe { self.device.device.queue_submit(self.device.queues.graphics_queue, &[submit_info], vk::Fence::null()).map_err(|err| {
+            println!("Error submitting command buffer to queue {}", err);
+            FrameError
+        }) }?;
+
+        Ok(())
+    }
+
+    fn begin_frame(&self) -> Result<(), FrameError> {
+        unsafe { self.device.device.reset_command_buffer(self.graphics_command_buffer, vk::CommandBufferResetFlags::empty()).map_err(|err| {
+            println!("Error resetting command buffer {}", err);
+            FrameError
+        }) }?;
+
+        let begin_info = vk::CommandBufferBeginInfo {
+            ..Default::default()
+        };
+
+        unsafe { self.device.device.begin_command_buffer(self.graphics_command_buffer, &begin_info).map_err(|err| {
             println!("Error beginning command buffer {}", err);
             FrameError
         }) }?;
@@ -143,7 +202,7 @@ impl Frame for VulkanFrame {
             ..Default::default()
         };
 
-        unsafe { self.device.device.cmd_begin_render_pass(self.command_buffer, &render_pass_info, vk::SubpassContents::SECONDARY_COMMAND_BUFFERS) };
+        unsafe { self.device.device.cmd_begin_render_pass(self.graphics_command_buffer, &render_pass_info, vk::SubpassContents::SECONDARY_COMMAND_BUFFERS) };
 
         Ok(())
     }
@@ -154,19 +213,19 @@ impl Frame for VulkanFrame {
             FrameError
         })?;
 
-        unsafe { self.device.device.cmd_execute_commands(self.command_buffer, &submitted_command_buffers_guard) };
+        unsafe { self.device.device.cmd_execute_commands(self.graphics_command_buffer, &submitted_command_buffers_guard) };
 
-        unsafe { self.device.device.cmd_end_render_pass(self.command_buffer); };
+        unsafe { self.device.device.cmd_end_render_pass(self.graphics_command_buffer); };
 
-        unsafe { self.device.device.end_command_buffer(self.command_buffer).map_err(|err| {
+        unsafe { self.device.device.end_command_buffer(self.graphics_command_buffer).map_err(|err| {
             println!("Error ending command buffer {}", err);
             FrameError
         }) }?;
 
-        let wait_semaphores = [ self.image_available ];
+        let wait_semaphores = [ self.image_available, self.transfer_complete ];
         let signal_semaphores = [ self.work_complete ];
         let wait_stages = [ vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT ];
-        let command_buffers = vec![ self.command_buffer ];
+        let command_buffers = vec![ self.graphics_command_buffer ];
 
         let submit_info = vk::SubmitInfo {
             wait_semaphore_count: 1,
@@ -213,12 +272,14 @@ impl Frame for VulkanFrame {
 impl Drop for VulkanFrame {
     fn drop(&mut self) {
         unsafe {
-            self.device.device.free_command_buffers(self.device.command_pool, &[self.command_buffer]);
+            self.device.device.free_command_buffers(self.device.command_pool, &[self.graphics_command_buffer, self.sync_command_buffer]);
         }
 
         match self.submitted_command_buffers.lock() {
             Ok(submitted_buffers) => {
-                unsafe { self.device.device.free_command_buffers(self.device.command_pool, &submitted_buffers) };
+                if submitted_buffers.len() > 0 {
+                    unsafe { self.device.device.free_command_buffers(self.device.command_pool, &submitted_buffers) };
+                }
             },
             Err(err) => {
                 println!("Mutex on command buffer is poisoned {}", err);

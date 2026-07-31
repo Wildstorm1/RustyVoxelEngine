@@ -6,6 +6,26 @@ use super::stucts::{ Vertex, UniformBufferObject, Camera };
 use std::fmt;
 
 /*
+ * List of buffers with buffer handles
+ */
+#[derive(Hash, PartialEq, Eq, Debug)]
+pub enum BufferHandles {
+    VertexCPU,
+    VertexGPU,
+    IndexCPU,
+    IndexGPU
+}
+
+/*
+ * List of uniforms with handles
+ */
+#[derive(Hash, PartialEq, Eq, Debug)]
+pub enum UniformHandles {
+    ModelsFrame1CPU,
+    ModelsFrame2CPU,
+}
+
+/*
  * Handle to an underlying implementations buffer type
  */
 #[derive(Eq, Hash, PartialEq, Copy, Clone, Debug)]
@@ -76,7 +96,12 @@ pub trait Resources {
     /*
      * Returns the large global vertex buffer
      */
-    fn get_vertex_buffer_handle(&self) -> Result<Buffer, ResourcesError>;
+    fn get_buffer_handle(&self, label: BufferHandles) -> Result<Buffer, ResourcesError>;
+
+    /*
+     * Returns the large global model uniform buffer
+     */
+    fn get_uniform_handle(&self, label: UniformHandles) -> Result<Uniform, ResourcesError>;
 
     /*
      * Writes vertex data to the cpu side vertex buffer
@@ -84,19 +109,9 @@ pub trait Resources {
     unsafe fn buffer_vertex_data_cpu_side(&self, args: WriteVertexBuffer) -> Result<(), ResourcesError>;
 
     /*
-     * Returns the large global index buffer
-     */
-    fn get_index_buffer_handle(&self) -> Result<Buffer, ResourcesError>;
-
-    /*
      * Writes index data to the cpu side index buffer
      */
     unsafe fn buffer_index_data_cpu_side(&self, args: WriteIndexBuffer) -> Result<(), ResourcesError>;
-
-    /*
-     * Returns the large global model uniform buffer
-     */
-    fn get_model_buffer_handle(&self) -> Result<Uniform, ResourcesError>;
 
     /*
      * Writes model data to the cpu side model buffer

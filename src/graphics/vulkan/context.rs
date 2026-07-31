@@ -19,6 +19,7 @@ use ash::{ vk };
 #[derive(Copy, Clone)]
 struct FrameContext {
     image_available_gpu: vk::Semaphore,
+    transfer_complete: vk::Semaphore,
     in_flight_fence: vk::Fence,
 }
 
@@ -102,6 +103,18 @@ impl VulkanContext {
                 }
             };
 
+            let semaphore_info = vk::SemaphoreCreateInfo {
+                ..Default::default()
+            };
+
+            let transfer_complete_on_gpu = match unsafe { device.device.create_semaphore(&semaphore_info, None) } {
+                Ok(semaphore) => semaphore,
+                Err(err) => {
+                    println!("Error allocating transfer semaphore {}", err);
+                    return Err(ContextError);
+                }
+            };
+
             let fence_info = vk::FenceCreateInfo {
                 flags: vk::FenceCreateFlags::SIGNALED,
                 ..Default::default()
@@ -117,6 +130,7 @@ impl VulkanContext {
 
             frame_contexts.push(FrameContext {
                 image_available_gpu: image_available_on_gpu,
+                transfer_complete: transfer_complete_on_gpu,
                 in_flight_fence: in_flight_fence,
             });
 
@@ -188,6 +202,7 @@ impl Context for VulkanContext {
             self.pipeline.clone().unwrap(),
             context.image_available_gpu,
             self.swap_chain_contexts[image_index as usize].work_complete_gpu,
+            context.transfer_complete,
             context.in_flight_fence,
         ) {
             Ok(frame) => Arc::new(frame),

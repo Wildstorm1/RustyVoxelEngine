@@ -5,7 +5,7 @@
 use crate::graphics::hal::stucts::UniformBufferObject;
 
 use super::super::hal::resources::{
-    Resources, ResourcesError, Buffer, Uniform, WriteVertexBuffer, WriteIndexBuffer, WriteModelBuffer
+    Resources, ResourcesError, Buffer, Uniform, WriteVertexBuffer, WriteIndexBuffer, WriteModelBuffer, BufferHandles, UniformHandles
 };
 use super::super::hal::stucts::{ Vertex };
 use super::application::render_pass::{ VulkanRenderPass };
@@ -44,12 +44,16 @@ impl VulkanFrameResources {
 }
 
 impl Resources for VulkanFrameResources {
-    fn get_vertex_buffer_handle(&self) -> Result<Buffer, ResourcesError> {
-        self.resources.get_vertex_buffer_handle()
+    fn get_buffer_handle(&self, label: BufferHandles) -> Result<Buffer, ResourcesError> {
+        self.resources.get_buffer_handle(label)
+    }
+
+    fn get_uniform_handle(&self, label: UniformHandles) -> Result<Uniform, ResourcesError> {
+        self.resources.get_uniform_handle(label)
     }
 
     unsafe fn buffer_vertex_data_cpu_side(&self, args: WriteVertexBuffer) -> Result<(), ResourcesError> {
-        let vertex_buffer_start = self.resources.vertex_data.mapping as *mut Vertex;
+        let vertex_buffer_start = self.resources.get_vulkan_buffer_pointer(BufferHandles::VertexCPU)? as *mut Vertex;
         let vertex_slot = unsafe { vertex_buffer_start.add(args.offset) };
 
         unsafe { std::ptr::copy_nonoverlapping(args.vertices.as_ptr(), vertex_slot, args.vertices.len()) };
@@ -57,12 +61,8 @@ impl Resources for VulkanFrameResources {
         Ok(())
     }
 
-    fn get_index_buffer_handle(&self) -> Result<Buffer, ResourcesError> {
-        self.resources.get_index_buffer_handle()
-    }
-
     unsafe fn buffer_index_data_cpu_side(&self, args: WriteIndexBuffer) -> Result<(), ResourcesError> {
-        let index_buffer_start = self.resources.index_data.mapping as *mut u32;
+        let index_buffer_start = self.resources.get_vulkan_buffer_pointer(BufferHandles::IndexCPU)? as *mut u32;
         let index_slot = unsafe { index_buffer_start.add(args.offset) };
 
         unsafe { std::ptr::copy_nonoverlapping(args.indices.as_ptr(), index_slot, args.indices.len()) };
@@ -70,23 +70,13 @@ impl Resources for VulkanFrameResources {
         Ok(())
     }
 
-    fn get_model_buffer_handle(&self) -> Result<Uniform, ResourcesError> {
-        if self.frame_number == 0 {
-            self.resources.get_model_buffer_frame1_handle()
-        } else if self.frame_number == 1 {
-            self.resources.get_model_buffer_frame2_handle()
-        } else {
-            Err(ResourcesError)
-        }
-    }
-
     unsafe fn buffer_model_data_cpu_side(&self, args: WriteModelBuffer) -> Result<(), ResourcesError> {
         let uniform_buffer_start;
 
         if self.frame_number == 0 {
-            uniform_buffer_start = self.resources.frame1_uniform_data.mapping as *mut UniformBufferObject;
+            uniform_buffer_start = self.resources.get_vulkan_uniform_pointer(UniformHandles::ModelsFrame1CPU)? as *mut UniformBufferObject;
         } else {
-            uniform_buffer_start = self.resources.frame2_uniform_data.mapping as *mut UniformBufferObject;
+            uniform_buffer_start = self.resources.get_vulkan_uniform_pointer(UniformHandles::ModelsFrame2CPU)? as *mut UniformBufferObject;
         }
 
         let uniform_slot = unsafe { uniform_buffer_start.add(args.offset) };
@@ -98,20 +88,12 @@ impl Resources for VulkanFrameResources {
 }
 
 impl VulkanFrameResources {
-    pub fn get_vulkan_vertex_buffer_handle(&self) -> Result<vk::Buffer, ResourcesError> {
-        Ok(self.resources.vertex_data.buffer)
+    pub fn get_vulkan_buffer_handle(&self, handle: Buffer) -> Result<vk::Buffer, ResourcesError> {
+        self.resources.get_vulkan_buffer_handle_from_handle(handle)
     }
 
-    pub fn get_vulkan_vertex_staging_buffer_handle(&self) -> Result<vk::Buffer, ResourcesError> {
-        Ok(self.resources.vertex_data.staging_buffer)
-    }
-
-    pub fn get_vulkan_index_buffer_handle(&self) -> Result<vk::Buffer, ResourcesError> {
-        Ok(self.resources.index_data.buffer)
-    }
-
-    pub fn get_vulkan_index_staging_buffer_handle(&self) -> Result<vk::Buffer, ResourcesError> {
-        Ok(self.resources.index_data.staging_buffer)
+    pub fn get_vulkan_uniform_handle(&self, handle: Uniform) -> Result<vk::Buffer, ResourcesError> {
+        self.resources.get_vulkan_uniform_handle_from_handle(handle)
     }
 
     pub fn get_descriptor_set(&self) -> Result<vk::DescriptorSet, ResourcesError> {

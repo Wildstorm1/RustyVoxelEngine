@@ -2,11 +2,11 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use crate::graphics::hal::command_buffer::{ CommandBuffer, DrawIndexedPacket };
+use crate::graphics::hal::command_buffer::{ CommandBuffer, CopyBufferPacket, DrawIndexedPacket };
 use crate::graphics::hal::context::{ Context };
-use crate::graphics::hal::resources::{ Resources };
+use crate::graphics::hal::resources::{ Resources, WriteVertexBuffer, WriteIndexBuffer, WriteModelBuffer, BufferHandles, UniformHandles };
 use crate::graphics::hal::frame::{ Frame, CommandBufferArgs };
-use crate::graphics::hal::stucts::{ Vertex };
+use crate::graphics::hal::stucts::{ Vertex, UniformBufferObject };
 
 /*
  * Simple struct for rendering errors
@@ -137,8 +137,64 @@ impl <T: Context> Renderer<T> {
             RendererError
         })?;
 
-        frame.begin_frame().map_err(|err| {
-            println!("Error beginning frame {:?}", err);
+        /* ---------------------------------------------------------------------------------------------------- */
+
+        /*
+         * Stage 0: Generate or cull data
+         */
+
+        let mut vertex_list = Vec::new();
+        let mut index_list = Vec::new();
+        create_cube(&mut vertex_list, &mut index_list);
+
+        /*
+         * Stage 1: Copy data into local buffers
+         */
+
+        let resources = frame.get_resources().map_err(|err| {
+            println!("Error getting resources api {:?}", err);
+            RendererError
+        })?;
+
+        unsafe { resources.buffer_vertex_data_cpu_side(WriteVertexBuffer {
+            offset: 0,
+            vertices: &vertex_list
+        }).map_err(|err| {
+            println!("Error buffering vertices {:?}", err);
+            RendererError
+        }) }?;
+
+        unsafe { resources.buffer_index_data_cpu_side(WriteIndexBuffer {
+            offset: 0,
+            indices: &index_list
+        }).map_err(|err| {
+            println!("Error buffering indices {:?}", err);
+            RendererError
+        }) }?;
+
+        let model_matrix = UniformBufferObject {
+            model: glm::mat4(
+                1.0f32, 0.0f32, 0.0f32, 0.0f32,
+                0.0f32, 1.0f32, 0.0f32, 0.0f32,
+                0.0f32, 0.0f32, 1.0f32, 0.0f32,
+                0.0f32, 0.0f32, 0.0f32, 1.0f32
+            )
+        };
+
+        unsafe { resources.buffer_model_data_cpu_side(WriteModelBuffer {
+            offset: 0,
+            model: model_matrix
+        }).map_err(|err| {
+            println!("Error buffering model {:?}", err);
+            RendererError
+        }) }?;
+
+        /*
+         * Stage 2: Copy cpu to gpu (next frame?)
+         */
+
+        frame.begin_sync().map_err(|err| {
+            println!("Error beginning the sync job {:?}", err);
             RendererError
         })?;
 
@@ -147,26 +203,78 @@ impl <T: Context> Renderer<T> {
             RendererError
         })?;
 
-        let resources = frame.get_resources().map_err(|err| {
-            println!("Error getting resources api {:?}", err);
-            RendererError
-        })?;
-
-        let vertex_buffer = resources.get_vertex_buffer_handle().map_err(|err| {
+        let vertex_buffer = resources.get_buffer_handle(BufferHandles::VertexCPU).map_err(|err| {
             println!("Error getting vertex buffer {:?}", err);
             RendererError
         })?;
 
-        let index_buffer = resources.get_index_buffer_handle().map_err(|err| {
+        let vertex_gpu_buffer = resources.get_buffer_handle(BufferHandles::VertexGPU).map_err(|err| {
+            println!("Error getting vertex buffer {:?}", err);
+            RendererError
+        })?;
+
+        command_buffer.copy_buffer(CopyBufferPacket {
+            src: vertex_buffer,
+            dst: vertex_gpu_buffer,
+            src_offset: 0,
+            dst_offset: 0,
+            bytes: (vertex_list.len() * std::mem::size_of::<Vertex>()) as u64
+        }).map_err(|err| {
+            println!("Error submitting copy buffer command {:?}", err);
+            RendererError
+        })?;
+
+        let index_buffer = resources.get_buffer_handle(BufferHandles::IndexCPU).map_err(|err| {
             println!("Error getting index buffer {:?}", err);
             RendererError
         })?;
 
-        let uniform_buffer = resources.get_model_buffer_handle().map_err(|err| {
-            println!("Error getting uniform buffer {:?}", err);
+        let index_gpu_buffer = resources.get_buffer_handle(BufferHandles::IndexGPU).map_err(|err| {
+            println!("Error getting index buffer {:?}", err);
             RendererError
         })?;
 
+        command_buffer.copy_buffer(CopyBufferPacket {
+            src: index_buffer,
+            dst: index_gpu_buffer,
+            src_offset: 0,
+            dst_offset: 0,
+            bytes: (index_list.len() * std::mem::size_of::<u32>()) as u64
+        }).map_err(|err| {
+            println!("Error submitting copy buffer command {:?}", err);
+            RendererError
+        })?;
+
+        command_buffer.stage().map_err(|err| {
+            println!("Error staging command buffer {:?}", err);
+            RendererError
+        })?;
+
+        frame.submit_command_buffer(command_buffer).map_err(|err| {
+            println!("Error submitting command buffer {:?}", err);
+            RendererError
+        })?;
+
+        frame.end_sync().map_err(|err| {
+            println!("Error ending the sync job {:?}", err);
+            RendererError
+        })?;
+
+        frame.sync().map_err(|err| {
+            println!("Error running the sync job {:?}", err);
+            RendererError
+        })?;
+
+        /*
+         * Stage 3: Issue draw calls
+         */
+
+        frame.begin_frame().map_err(|err| {
+            println!("Error beginning frame {:?}", err);
+            RendererError
+        })?;
+
+        /*
         match command_buffer.draw_indexed(DrawIndexedPacket {
             vertex: vertex_buffer,
             index: index_buffer,
@@ -181,16 +289,7 @@ impl <T: Context> Renderer<T> {
                 return Err(RendererError);
             }
         };
-
-        command_buffer.stage().map_err(|err| {
-            println!("Error staging command buffer {:?}", err);
-            RendererError
-        })?;
-
-        frame.submit_command_buffer(command_buffer).map_err(|err| {
-            println!("Error submitting command buffer {:?}", err);
-            RendererError
-        })?;
+        */
 
         frame.end_frame().map_err(|err| {
             println!("Error ending frame {:?}", err);
@@ -201,6 +300,8 @@ impl <T: Context> Renderer<T> {
             println!("Error presenting frame {:?}", err);
             RendererError
         })?;
+
+        /* ---------------------------------------------------------------------------------------------------- */
 
         Ok(())
     }
@@ -214,126 +315,3 @@ impl <T: Context> Renderer<T> {
         Ok(())
     }
 }
-
-/*
-        /*
-        let resources = frame.get_resources().map_err(|err| {
-            println!("Error getting resources api {:?}", err);
-            RendererError
-        })?;
-
-        let vertex_buffer = resources.get_vertex_buffer_handle().map_err(|err| {
-            println!("Error getting vertex buffer {:?}", err);
-            RendererError
-        })?;
-
-        let index_buffer = resources.get_index_buffer_handle().map_err(|err| {
-            println!("Error getting index buffer {:?}", err);
-            RendererError
-        })?;
-
-        let uniform_buffer = resources.get_model_buffer_handle().map_err(|err| {
-            println!("Error getting uniform buffer {:?}", err);
-            RendererError
-        })?;
-        */
-
-    let mut command_buffer = match context.create_command_buffer(CommandBufferArgs {}) {
-        Ok(command_buffer) => command_buffer,
-        Err(err) => {
-            println!("Error creating command buffer {:?}", err);
-            return Err(ContextError);
-        }
-    };
-
-    match command_buffer.draw_indexed(DrawIndexedPacket {
-        vertex: vertex_buffer,
-        index: index_buffer,
-        uniform: uniform_buffer,
-        vertex_offset: 0,
-        index_offset: 0,
-        size: 36,
-    }) {
-        Ok(result) => result,
-        Err(err) => {
-            println!("Error recording command buffer {:?}", err);
-            return Err(ContextError);
-        }
-    };
-
-    context.end_frame();
-    context.present_frame();
-*/
-
-    /*
-    let vertex_buffer = match context.create_buffer(BufferArgs {
-        size: 1000000,
-        usage: BufferUsage(BufferUsage::VERTEX_BUFFER),
-        properties: BufferMemoryProperties(BufferMemoryProperties::DEVICE_LOCAL)
-    }) {
-        Ok(vertex_buffer) => vertex_buffer,
-        Err(err) => {
-            println!("Error creating vulkan vertex buffer {:?}", err);
-            return;
-        }
-    };
-
-    let index_buffer = match context.create_buffer(BufferArgs {
-        size: 1000000,
-        usage: BufferUsage(BufferUsage::INDEX_BUFFER),
-        properties: BufferMemoryProperties(BufferMemoryProperties::DEVICE_LOCAL)
-    }) {
-        Ok(index_buffer) => index_buffer,
-        Err(err) => {
-            println!("Error creating vulkan index buffer {:?}", err);
-            return;
-        }
-    };
-
-    let vb1 = vertex_buffer.clone();
-    let vb2 = vertex_buffer.clone();
-    let ib1 = index_buffer.clone();
-    let ib2 = index_buffer.clone();
-
-    let context1 = context.clone();
-    let context2 = context.clone();
-
-    let mut command_buffer_1 = match context1.create_command_buffer(CommandBufferArgs {}) {
-        Ok(command_buffer) => command_buffer,
-        Err(err) => {
-            println!("Error creating vulkan command buffer {:?}", err);
-            return;
-        }
-    };    
-
-    let handle1 = thread::spawn(move || {
-        command_buffer_1.draw_indexed(DrawIndexedPacket {
-            vertex: vb1,
-            index: ib1,
-            vertex_offset: 0,
-            index_offset: 0,
-            size: 2000,
-        });
-    });
-
-    let mut command_buffer_2 = match context2.create_command_buffer(CommandBufferArgs {}) {
-        Ok(command_buffer) => command_buffer,
-        Err(err) => {
-            println!("Error creating vulkan command buffer {:?}", err);
-            return;
-        }
-    };
-
-    let handle2 = thread::spawn(move || {
-        command_buffer_2.draw_indexed(DrawIndexedPacket {
-            vertex: vb2,
-            index: ib2,
-            vertex_offset: 0,
-            index_offset: 0,
-            size: 2000,
-        });
-    });
-
-    handle1.join().unwrap();
-    handle2.join().unwrap();
-    */

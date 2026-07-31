@@ -44,12 +44,27 @@ pub trait Frame {
     fn submit_command_buffer(&self, buffer: Self::T) -> Result<(), FrameError>;
 
     /*
-     * Ends the current frame's recording
+     * Begins the current frames transfer work
+     */
+    fn begin_sync(&self) -> Result<(), FrameError>;
+
+    /*
+     * Ends the current frames transfer work
+     */
+    fn end_sync(&self) -> Result<(), FrameError>;
+
+    /*
+     * Executes the sync workload previously recorded
+     */
+    fn sync(&self) -> Result<(), FrameError>;
+
+    /*
+     * Begins the current frame's graphics recording
      */
     fn begin_frame(&self) -> Result<(), FrameError>;
 
     /*
-     * Ends the current frame's recording
+     * Ends the current frame's graphics recording
      */
     fn end_frame(&self) -> Result<(), FrameError>;
 

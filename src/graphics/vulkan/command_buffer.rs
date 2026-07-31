@@ -3,7 +3,7 @@
  */
 
 use super::super::hal::command_buffer::{
-    CommandBuffer, CommandBufferError, DrawIndexedPacket, CopyBufferPacket
+    CommandBuffer, CommandBufferError, DrawIndexedPacket, CopyBufferPacket, BindCameraPacket
 };
 use super::super::hal::resources::{ Resources, WriteModelBuffer, WriteVertexBuffer, WriteIndexBuffer };
 use super::super::hal::stucts::{ Camera, UniformBufferObject, Vertex };
@@ -20,7 +20,8 @@ use ash::{ vk };
  * the same vec
  */
 enum InstructionPacket {
-    DrawIndexed(DrawIndexedPacket),
+    //DrawIndexed(DrawIndexedPacket),
+    //BindCamera(BindCameraPacket),
     CopyBuffer(CopyBufferPacket),
 }
 
@@ -124,180 +125,32 @@ fn push_draw_indexed(
 
 fn push_copy_buffer(
     device: Arc<VulkanDevice>,
+    resources: Arc<VulkanFrameResources>,
     command_buffer: vk::CommandBuffer,
     packet: CopyBufferPacket
 ) -> Result<(), CommandBufferError> {
-    Ok(())
-}
-
-fn copy_cpu_staging_buffer_to_gpu(
-    device: Arc<VulkanDevice>,
-    staging_buffer: vk::Buffer,
-    buffer: vk::Buffer,
-    bytes: usize
-) -> Result<(), CommandBufferError> {
-    let alloc_info = vk::CommandBufferAllocateInfo {
-        level: vk::CommandBufferLevel::PRIMARY,
-        command_buffer_count: 1,
-        command_pool: device.command_pool,
+    let copy_region = vk::BufferCopy {
+        src_offset: packet.src_offset,
+        dst_offset: packet.dst_offset,
+        size: packet.bytes,
         ..Default::default()
     };
 
-    let command_buffer = unsafe { device.device.allocate_command_buffers(&alloc_info).map_err(|err| {
-        println!("Error creating transfer command buffer {}", err);
+    let src_buffer = resources.get_vulkan_buffer_handle(packet.src).map_err(|err| {
+        println!("Could not get vulkan buffer for src handle {} {:?}", packet.src, err);
         CommandBufferError
-    }) }?[0];
+    })?;
 
-    let begin_buffer_info = vk::CommandBufferBeginInfo {
-        flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
-        ..Default::default()
-    };
+    let dst_buffer = resources.get_vulkan_buffer_handle(packet.dst).map_err(|err| {
+        println!("Could not get vulkan buffer for dst handle {} {:?}", packet.dst, err);
+        CommandBufferError
+    })?;
 
     unsafe {
-        device.device.begin_command_buffer(command_buffer, &begin_buffer_info).map_err(|err| {
-            println!("Error beginning transfer command buffer {}", err);
-            CommandBufferError
-        })?;
-    }
-
-    let copy_region = vk::BufferCopy {
-        src_offset: 0,
-        dst_offset: 0,
-        size: bytes as u64,
-        ..Default::default()
+        device.device.cmd_copy_buffer(command_buffer, src_buffer, dst_buffer, &[copy_region])
     };
-
-    unsafe { device.device.cmd_copy_buffer(command_buffer, staging_buffer, buffer, &[copy_region]) };
-    unsafe { device.device.end_command_buffer(command_buffer).map_err(|err| {
-        println!("Error ending transfer command buffer {}", err);
-        CommandBufferError
-    }) }?;
-
-    let submit_info = vk::SubmitInfo {
-        command_buffer_count: 1,
-        p_command_buffers: [ command_buffer ].as_ptr(),
-        ..Default::default()
-    };
-
-    unsafe { device.device.queue_submit(device.queues.graphics_queue, &[submit_info], vk::Fence::null()).map_err(|err| {
-        println!("Error submitting command buffer to queue {}", err);
-        CommandBufferError
-    }) }?;
-
-    unsafe { device.device.queue_wait_idle(device.queues.graphics_queue).map_err(|err| {
-        println!("Error waiting for queue to be idle {}", err);
-        CommandBufferError
-    }) }?;
-
-    unsafe { device.device.free_command_buffers(device.command_pool, &[ command_buffer ]) };
 
     Ok(())
-}
-
-fn push_face(
-    vertex_0: glm::Vec3,
-    vertex_1: glm::Vec3,
-    vertex_2: glm::Vec3,
-    vertex_3: glm::Vec3,
-    vertices: &mut Vec<Vertex>,
-    indices: &mut Vec<u32>
-) {
-    let index = vertices.len() as u32;
-    vertices.push(Vertex { pos: vertex_0, color: glm::vec3(1.0f32, 0.0f32, 0.0f32) });
-    vertices.push(Vertex { pos: vertex_1, color: glm::vec3(0.0f32, 1.0f32, 0.0f32) });
-    vertices.push(Vertex { pos: vertex_2, color: glm::vec3(0.0f32, 0.0f32, 1.0f32) });
-    vertices.push(Vertex { pos: vertex_3, color: glm::vec3(1.0f32, 1.0f32, 1.0f32) });
-    indices.push(index);
-    indices.push(index + 1);
-    indices.push(index + 2);
-    indices.push(index + 2);
-    indices.push(index + 1);
-    indices.push(index + 3);
-}
-
-fn push_right_face(
-    voxel_offset: glm::Vec3,
-    vertices: &mut Vec<Vertex>,
-    indices: &mut Vec<u32>
-) {
-    let v0 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 1.0f32);
-    let v1 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 1.0f32);
-    let v2 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 1.0f32);
-    let v3 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 1.0f32);
-    push_face(v0, v1, v2, v3, vertices, indices);
-}
-
-fn push_front_face(
-    voxel_offset: glm::Vec3,
-    vertices: &mut Vec<Vertex>,
-    indices: &mut Vec<u32>
-) {
-    let v0 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 0.0f32);
-    let v1 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 0.0f32);
-    let v2 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 1.0f32);
-    let v3 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 1.0f32);
-    push_face(v0, v1, v2, v3, vertices, indices);
-}
-
-fn push_bottom_face(
-    voxel_offset: glm::Vec3,
-    vertices: &mut Vec<Vertex>,
-    indices: &mut Vec<u32>
-) {
-    let v0 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 0.0f32);
-    let v1 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 0.0f32);
-    let v2 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 1.0f32);
-    let v3 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 1.0f32);
-    push_face(v0, v1, v2, v3, vertices, indices);
-}
-
-fn push_left_face(
-    voxel_offset: glm::Vec3,
-    vertices: &mut Vec<Vertex>,
-    indices: &mut Vec<u32>
-) {
-    let v0 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 0.0f32);
-    let v1 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 0.0f32);
-    let v2 = voxel_offset + glm::vec3(1.0f32, 0.0f32, 0.0f32);
-    let v3 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 0.0f32);
-    push_face(v0, v1, v2, v3, vertices, indices);
-}
-
-fn push_back_face(
-    voxel_offset: glm::Vec3,
-    vertices: &mut Vec<Vertex>,
-    indices: &mut Vec<u32>
-) {
-    let v0 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 0.0f32);
-    let v1 = voxel_offset + glm::vec3(0.0f32, 0.0f32, 1.0f32);
-    let v2 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 0.0f32);
-    let v3 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 1.0f32);
-    push_face(v0, v1, v2, v3, vertices, indices);
-}
-
-fn push_top_face(
-    voxel_offset: glm::Vec3,
-    vertices: &mut Vec<Vertex>,
-    indices: &mut Vec<u32>
-) {
-    let v0 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 0.0f32);
-    let v1 = voxel_offset + glm::vec3(0.0f32, 1.0f32, 1.0f32);
-    let v2 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 0.0f32);
-    let v3 = voxel_offset + glm::vec3(1.0f32, 1.0f32, 1.0f32);
-    push_face(v0, v1, v2, v3, vertices, indices);
-}
-
-fn create_cube(
-    vertices: &mut Vec<Vertex>,
-    indices: &mut Vec<u32>
-) {
-    let v0 = glm::vec3(0.0f32, 0.0f32, 0.0f32);
-    push_right_face(v0, vertices, indices);
-    push_left_face(v0, vertices, indices);
-    push_front_face(v0, vertices, indices);
-    push_back_face(v0, vertices, indices);
-    push_top_face(v0, vertices, indices);
-    push_bottom_face(v0, vertices, indices);
 }
 
 impl CommandBuffer for VulkanCommandBuffer {
@@ -306,7 +159,7 @@ impl CommandBuffer for VulkanCommandBuffer {
             return Err(CommandBufferError);
         }
 
-        self.buffer.push(InstructionPacket::DrawIndexed(packet));
+        //self.buffer.push(InstructionPacket::DrawIndexed(packet));
 
         Ok(())
     }
@@ -327,16 +180,6 @@ impl CommandBuffer for VulkanCommandBuffer {
         }
 
         self.invalidated = true;
-        /*
-        let elements: Vec<InstructionPacket> = self.buffer.drain(..).collect();
-
-        for packet in elements {
-            match packet {
-                InstructionPacket::DrawIndexed(packet) => push_draw_indexed(self.device.clone(), self.command_buffer, packet)?,
-                InstructionPacket::CopyBuffer(packet) => push_copy_buffer(self.device.clone(), self.command_buffer, packet)?,
-            }
-        }
-        */
 
         let inheritance_info = vk::CommandBufferInheritanceInfo {
             render_pass: self.resources.get_render_pass(),
@@ -356,6 +199,26 @@ impl CommandBuffer for VulkanCommandBuffer {
             CommandBufferError
         }) }?;
 
+        let elements: Vec<InstructionPacket> = self.buffer.drain(..).collect();
+
+        for packet in elements {
+            match packet {
+                //InstructionPacket::DrawIndexed(packet) => push_draw_indexed(self.device.clone(), self.command_buffer, packet)?,
+                InstructionPacket::CopyBuffer(packet) => push_copy_buffer(self.device.clone(), self.resources.clone(), self.command_buffer, packet)?,
+            }
+        }
+
+        unsafe { self.device.device.end_command_buffer(self.command_buffer).map_err(|err| {
+            println!("Error ending command buffer {}", err);
+            CommandBufferError
+        }) }?;
+
+        Ok(())
+    }
+}
+
+/*
+        /*
         unsafe { self.device.device.cmd_bind_pipeline(self.command_buffer, vk::PipelineBindPoint::GRAPHICS, self.pipeline.pipeline) };
 
         let extent = self.swap_chain.swap_chain_extent;
@@ -382,7 +245,7 @@ impl CommandBuffer for VulkanCommandBuffer {
         };
 
         unsafe { self.device.device.cmd_set_scissor(self.command_buffer, 0, &[ scissor ]) };
-
+        */
 
         let mut camera = Camera {
             view: glm::ext::look_at(
@@ -417,23 +280,6 @@ impl CommandBuffer for VulkanCommandBuffer {
             );
         }
 
-        let model_matrix = UniformBufferObject {
-            model: glm::mat4(
-                1.0f32, 0.0f32, 0.0f32, 0.0f32,
-                0.0f32, 1.0f32, 0.0f32, 0.0f32,
-                0.0f32, 0.0f32, 1.0f32, 0.0f32,
-                0.0f32, 0.0f32, 0.0f32, 1.0f32
-            )
-        };
-
-        unsafe { self.resources.buffer_model_data_cpu_side(WriteModelBuffer {
-            offset: 0,
-            model: model_matrix
-        }).map_err(|err| {
-            println!("Error buffering model {:?}", err);
-            CommandBufferError
-        }) }?;
-
         let descriptor_set = self.resources.get_descriptor_set().map_err(|err| {
             println!("Error getting model buffer pointer {:?}", err);
             CommandBufferError
@@ -451,26 +297,6 @@ impl CommandBuffer for VulkanCommandBuffer {
                 &dynamic_offset
             );
         }
-
-        let mut vertex_list = Vec::new();
-        let mut index_list = Vec::new();
-        create_cube(&mut vertex_list, &mut index_list);
-
-        unsafe { self.resources.buffer_vertex_data_cpu_side(WriteVertexBuffer {
-            offset: 0,
-            vertices: &vertex_list
-        }).map_err(|err| {
-            println!("Error buffering vertices {:?}", err);
-            CommandBufferError
-        }) }?;
-
-        unsafe { self.resources.buffer_index_data_cpu_side(WriteIndexBuffer {
-            offset: 0,
-            indices: &index_list
-        }).map_err(|err| {
-            println!("Error buffering indices {:?}", err);
-            CommandBufferError
-        }) }?;
 
         copy_cpu_staging_buffer_to_gpu(
             self.device.clone(),
@@ -512,12 +338,4 @@ impl CommandBuffer for VulkanCommandBuffer {
             0,
             0
         ) };
-
-        unsafe { self.device.device.end_command_buffer(self.command_buffer).map_err(|err| {
-            println!("Error ending command buffer {}", err);
-            CommandBufferError
-        }) }?;
-
-        Ok(())
-    }
-}
+*/

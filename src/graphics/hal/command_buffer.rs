@@ -2,6 +2,7 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
+use super::stucts::{ Camera };
 use super::resources::{ Buffer, Uniform };
 use std::fmt;
 
@@ -14,7 +15,7 @@ pub struct DrawIndexedPacket {
     pub uniform: Uniform,
     pub vertex_offset: u64,
     pub index_offset: u64,
-    pub size: u64,
+    pub bytes: u64,
 }
 
 /*
@@ -25,7 +26,14 @@ pub struct CopyBufferPacket {
     pub dst: Buffer,
     pub src_offset: u64,
     pub dst_offset: u64,
-    pub size: u64,
+    pub bytes: u64,
+}
+
+/*
+ * Arguments for a bind camera command
+ */
+pub struct BindCameraPacket {
+    camera: Camera
 }
 
 /*
