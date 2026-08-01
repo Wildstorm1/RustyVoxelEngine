@@ -5,7 +5,7 @@
 pub(super) mod hardware;
 pub(super) mod application;
 pub mod context;
-pub mod command_buffer;
+pub mod draw_buffer;
 pub mod frame_resources;
 pub mod frame;
 pub mod transfer_job;

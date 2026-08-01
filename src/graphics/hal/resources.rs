@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use super::stucts::{ Vertex, UniformBufferObject, Camera };
+use super::stucts::{ Vertex, UniformBufferObject };
 use std::fmt;
 
 /*

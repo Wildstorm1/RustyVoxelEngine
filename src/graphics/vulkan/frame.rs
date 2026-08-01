@@ -6,7 +6,6 @@ use super::super::hal::frame::{ Frame, FrameError };
 use super::transfer_job::{ VulkanTransferJob };
 use super::draw_job::{ VulkanDrawJob };
 use super::frame_resources::{ VulkanFrameResources };
-use super::command_buffer::{ VulkanCommandBuffer };
 use super::hardware::swapchain::{ VulkanSwapchain };
 use super::hardware::device::{ VulkanDevice };
 use super::application::pipeline::{ VulkanPipeline };
@@ -109,22 +108,5 @@ impl Frame for VulkanFrame {
 impl Drop for VulkanFrame {
     fn drop(&mut self) {
         println!("Destroying frame");
-
-        /*
-        unsafe {
-            self.device.device.free_command_buffers(self.device.command_pool, &[self.graphics_command_buffer]);
-        }
-
-        match self.submitted_command_buffers.lock() {
-            Ok(submitted_buffers) => {
-                if submitted_buffers.len() > 0 {
-                    unsafe { self.device.device.free_command_buffers(self.device.command_pool, &submitted_buffers) };
-                }
-            },
-            Err(err) => {
-                println!("Mutex on command buffer is poisoned {}", err);
-            }
-        }
-        */
     }
 }

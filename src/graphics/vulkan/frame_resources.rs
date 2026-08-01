@@ -8,8 +8,10 @@ use super::super::hal::resources::{
     Resources, ResourcesError, Buffer, Uniform, WriteVertexBuffer, WriteIndexBuffer, WriteModelBuffer, BufferHandles, UniformHandles
 };
 use super::super::hal::stucts::{ Vertex };
+use super::application::pipeline::{ VulkanPipeline };
 use super::application::render_pass::{ VulkanRenderPass };
 use super::application::resources::{ VulkanResources };
+use super::hardware::swapchain::{ VulkanSwapchain };
 use super::hardware::device::{ VulkanDevice };
 use std::sync::{ Arc };
 use ash::vk;
@@ -21,6 +23,8 @@ pub struct VulkanFrameResources {
     device: Arc<VulkanDevice>,
     resources: Arc<VulkanResources>,
     render_pass: Arc<VulkanRenderPass>,
+    swap_chain: Arc<VulkanSwapchain>,
+    pipeline: Arc<VulkanPipeline>,
     frame_number: usize,
     swap_chain_index: u32,
 }
@@ -30,6 +34,8 @@ impl VulkanFrameResources {
         device: Arc<VulkanDevice>,
         resources: Arc<VulkanResources>,
         render_pass: Arc<VulkanRenderPass>,
+        swap_chain: Arc<VulkanSwapchain>,
+        pipeline: Arc<VulkanPipeline>,
         frame_number: usize,
         swap_chain_index: u32,
     ) -> Self {
@@ -37,6 +43,8 @@ impl VulkanFrameResources {
             device: device,
             resources: resources,
             render_pass: render_pass,
+            swap_chain: swap_chain,
+            pipeline: pipeline,
             frame_number: frame_number,
             swap_chain_index: swap_chain_index
         }
@@ -106,6 +114,10 @@ impl VulkanFrameResources {
 
     pub fn get_render_pass(&self) -> vk::RenderPass {
         self.render_pass.render_pass
+    }
+
+    pub fn get_pipeline_layout(&self) -> vk::PipelineLayout {
+        self.pipeline.pipeline_layout
     }
 
     pub fn get_presentation_index(&self) -> u32 {

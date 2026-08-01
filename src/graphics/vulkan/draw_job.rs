@@ -6,7 +6,7 @@ use super::super::hal::job::{ Job, JobError };
 use super::hardware::device::{ VulkanDevice };
 use super::hardware::swapchain::{ VulkanSwapchain };
 use super::application::pipeline::{ VulkanPipeline };
-use super::command_buffer::{ VulkanCommandBuffer };
+use super::draw_buffer::{ VulkanDrawCommandBuffer };
 use super::frame_resources::{ VulkanFrameResources };
 use std::sync::{ Arc, Mutex };
 use ash::vk;
@@ -69,7 +69,7 @@ impl VulkanDrawJob {
 }
 
 impl Job for VulkanDrawJob {
-    type T = VulkanCommandBuffer;
+    type T = VulkanDrawCommandBuffer;
 
     type E = VulkanFrameResources;
 
@@ -78,7 +78,7 @@ impl Job for VulkanDrawJob {
     }
 
     fn create_command_buffer(&self) -> Result<Self::T, JobError> {
-        VulkanCommandBuffer::new(
+        VulkanDrawCommandBuffer::new(
             self.device.clone(),
             self.resources.clone(),
             self.swap_chain.clone(),

@@ -3,7 +3,7 @@
  */
 
 use super::stucts::{ Camera };
-use super::resources::{ Buffer, Uniform };
+use super::resources::{ Buffer };
 use std::fmt;
 
 /*
@@ -12,10 +12,11 @@ use std::fmt;
 pub struct DrawIndexedPacket {
     pub vertex: Buffer,
     pub index: Buffer,
-    pub uniform: Uniform,
-    pub vertex_offset: u64,
-    pub index_offset: u64,
-    pub bytes: u64,
+    pub camera: Camera,
+    pub uniform_index: u64,
+    pub vertex_offset: i32,
+    pub index_offset: u32,
+    pub indices_count: u32,
 }
 
 /*
@@ -27,13 +28,6 @@ pub struct CopyBufferPacket {
     pub src_offset: u64,
     pub dst_offset: u64,
     pub bytes: u64,
-}
-
-/*
- * Arguments for a bind camera command
- */
-pub struct BindCameraPacket {
-    camera: Camera
 }
 
 /*

@@ -2,6 +2,8 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
+use crate::graphics::hal::context::ImageExtent;
+
 use super::super::hal::context::{
     Context, ContextError
 };
@@ -157,6 +159,7 @@ impl VulkanContext {
             });
         }
 
+        // TODO: These are options because switching requires a none slot, there must be a better way
         Ok( Self {
             device: device,
             window: window,
@@ -193,7 +196,15 @@ impl Context for VulkanContext {
             ContextError
         }) }?;
 
-        let frame_resources = Arc::new(VulkanFrameResources::new(self.device.clone(), self.resources.clone(), self.render_pass.clone().unwrap(), self.frame_number, image_index));
+        let frame_resources = Arc::new(VulkanFrameResources::new(
+            self.device.clone(),
+            self.resources.clone(),
+            self.render_pass.clone().unwrap(),
+            self.swapchain.clone().unwrap(),
+            self.pipeline.clone().unwrap(),
+            self.frame_number, 
+            image_index
+        ));
 
         let next_frame = match VulkanFrame::new(
             self.device.clone(),
@@ -215,6 +226,15 @@ impl Context for VulkanContext {
         self.frames[self.frame_number] = Some(next_frame.clone());
         self.frame_number = (self.frame_number + 1) % self.frame_contexts.len();
         Ok(next_frame)
+    }
+
+    fn image_extent(&mut self) -> Result<ImageExtent, ContextError> {
+        let swapchain_extent = self.swapchain.clone().unwrap().swap_chain_extent;
+
+        Ok(ImageExtent {
+            width: swapchain_extent.width,
+            height: swapchain_extent.height,
+        })
     }
 
     fn window_resize(&mut self) -> Result<(), ContextError> {

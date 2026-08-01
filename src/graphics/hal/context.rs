@@ -6,6 +6,15 @@ use super::frame::{ Frame };
 use std::sync::{ Arc };
 
 /*
+ * Extent of the image
+ */
+#[derive(Hash, PartialEq, Eq, Debug)]
+pub struct ImageExtent {
+    pub width: u32,
+    pub height: u32,
+}
+
+/*
  * Simple struct for context errors
  */
 #[derive(Debug)]
@@ -21,6 +30,11 @@ pub trait Context {
      * Returns the next frame for recording
      */
     fn next_frame(&mut self) -> Result<Arc<Self::T>, ContextError>;
+
+    /*
+     * Returns the extent (width / height) of the image
+     */
+    fn image_extent(&mut self) -> Result<ImageExtent, ContextError>;
 
     /*
      * Handles rebuilding when the window resizes

@@ -3,7 +3,7 @@
  */
 
 use crate::graphics::renderer::{ Renderer };
-use crate::graphics::{ CommandBuffer, Context, Resources, VulkanCommandBuffer, VulkanContext };
+use crate::graphics::{ CommandBuffer, Context, Resources, VulkanContext };
 
 use sdl3::{pixels::Color, video::WindowFlags};
 use sdl3::event::{Event, WindowEvent};

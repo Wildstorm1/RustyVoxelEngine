@@ -4,10 +4,10 @@
 
 use crate::graphics::hal::command_buffer::{ CommandBuffer, CopyBufferPacket, DrawIndexedPacket };
 use crate::graphics::hal::context::{ Context };
-use crate::graphics::hal::resources::{ Resources, WriteVertexBuffer, WriteIndexBuffer, WriteModelBuffer, BufferHandles, UniformHandles };
+use crate::graphics::hal::resources::{ Resources, WriteVertexBuffer, WriteIndexBuffer, WriteModelBuffer, BufferHandles };
 use crate::graphics::hal::frame::{ Frame };
 use crate::graphics::hal::job::{ Job };
-use crate::graphics::hal::stucts::{ Vertex, UniformBufferObject };
+use crate::graphics::hal::stucts::{ Vertex, UniformBufferObject, Camera };
 
 /*
  * Simple struct for rendering errors
@@ -280,6 +280,27 @@ impl <T: Context> Renderer<T> {
          * Stage 3: Issue draw calls
          */
 
+        let extent = self.context.image_extent().map_err(|err| {
+            println!("Error getting image extent {:?}", err);
+            RendererError
+        })?;
+
+        let mut camera = Camera {
+            view: glm::ext::look_at(
+                glm::vec3(2.0f32, 2.0f32, 2.0f32),
+                glm::vec3(0.0f32, 0.0f32, 0.0f32),
+                glm::vec3(0.0f32, 0.0f32, 1.0f32)
+            ),
+            proj: glm::ext::perspective(
+                glm::radians(45.0f32),
+                extent.width as f32 / extent.height as f32,
+                0.1f32,
+                1000.0f32
+            )
+        };
+
+        camera.proj[1][1] *= -1.0f32;
+
         let draw_job = frame.create_draw_job().map_err(|err| {
             println!("Error creating draw job {:?}", err);
             RendererError
@@ -295,6 +316,22 @@ impl <T: Context> Renderer<T> {
             RendererError
         })?;
 
+        match draw_command_buffer.draw_indexed(DrawIndexedPacket {
+            vertex: vertex_gpu_buffer,
+            index: index_gpu_buffer,
+            camera: camera,
+            uniform_index: 0,
+            vertex_offset: 0,
+            index_offset: 0,
+            indices_count: index_list.len() as u32,
+        }) {
+            Ok(result) => result,
+            Err(err) => {
+                println!("Error recording command buffer {:?}", err);
+                return Err(RendererError);
+            }
+        };
+
         draw_command_buffer.stage().map_err(|err| {
             println!("Error staging draw command buffer {:?}", err);
             RendererError
@@ -304,23 +341,6 @@ impl <T: Context> Renderer<T> {
             println!("Error submitting draw command buffer {:?}", err);
             RendererError
         })?;
-
-        /*
-        match command_buffer.draw_indexed(DrawIndexedPacket {
-            vertex: vertex_buffer,
-            index: index_buffer,
-            uniform: uniform_buffer,
-            vertex_offset: 0,
-            index_offset: 0,
-            size: 36,
-        }) {
-            Ok(result) => result,
-            Err(err) => {
-                println!("Error recording command buffer {:?}", err);
-                return Err(RendererError);
-            }
-        };
-        */
 
         draw_job.end_job().map_err(|err| {
             println!("Error ending draw job {:?}", err);
