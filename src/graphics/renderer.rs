@@ -280,12 +280,30 @@ impl <T: Context> Renderer<T> {
          * Stage 3: Issue draw calls
          */
 
-        /*
-        frame.begin_frame().map_err(|err| {
-            println!("Error beginning frame {:?}", err);
+        let draw_job = frame.create_draw_job().map_err(|err| {
+            println!("Error creating draw job {:?}", err);
             RendererError
         })?;
-        */
+
+        draw_job.begin_job().map_err(|err| {
+            println!("Error beginning the draw job {:?}", err);
+            RendererError
+        })?;
+
+        let mut draw_command_buffer = draw_job.create_command_buffer().map_err(|err| {
+            println!("Error creating draw command buffer {:?}", err);
+            RendererError
+        })?;
+
+        draw_command_buffer.stage().map_err(|err| {
+            println!("Error staging draw command buffer {:?}", err);
+            RendererError
+        })?;
+
+        draw_job.submit_command_buffer(draw_command_buffer).map_err(|err| {
+            println!("Error submitting draw command buffer {:?}", err);
+            RendererError
+        })?;
 
         /*
         match command_buffer.draw_indexed(DrawIndexedPacket {
@@ -304,17 +322,20 @@ impl <T: Context> Renderer<T> {
         };
         */
 
-        /*
-        frame.end_frame().map_err(|err| {
-            println!("Error ending frame {:?}", err);
+        draw_job.end_job().map_err(|err| {
+            println!("Error ending draw job {:?}", err);
             RendererError
         })?;
 
-        frame.present_frame().map_err(|err| {
-            println!("Error presenting frame {:?}", err);
+        draw_job.run_job().map_err(|err| {
+            println!("Error running draw job {:?}", err);
             RendererError
         })?;
-        */
+
+        frame.submit_draw_job(draw_job).map_err(|err| {
+            println!("Error submitting the draw job {:?}", err);
+            RendererError
+        })?;
 
         /* ---------------------------------------------------------------------------------------------------- */
 

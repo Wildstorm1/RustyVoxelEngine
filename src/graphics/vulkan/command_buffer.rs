@@ -5,6 +5,7 @@
 use super::super::hal::command_buffer::{
     CommandBuffer, CommandBufferError, DrawIndexedPacket, CopyBufferPacket, BindCameraPacket
 };
+use super::super::hal::resources::{ BufferHandles };
 use super::super::hal::resources::{ Resources, WriteModelBuffer, WriteVertexBuffer, WriteIndexBuffer };
 use super::super::hal::stucts::{ Camera, UniformBufferObject, Vertex };
 use super::frame_resources::{ VulkanFrameResources };
@@ -199,6 +200,7 @@ impl CommandBuffer for VulkanCommandBuffer {
             CommandBufferError
         }) }?;
 
+        /*
         let elements: Vec<InstructionPacket> = self.buffer.drain(..).collect();
 
         for packet in elements {
@@ -207,6 +209,116 @@ impl CommandBuffer for VulkanCommandBuffer {
                 InstructionPacket::CopyBuffer(packet) => push_copy_buffer(self.device.clone(), self.resources.clone(), self.command_buffer, packet)?,
             }
         }
+        */
+
+        /* ----------------------------------------------------------------------------- */
+
+        unsafe { self.device.device.cmd_bind_pipeline(self.command_buffer, vk::PipelineBindPoint::GRAPHICS, self.pipeline.pipeline) };
+
+        let extent = self.swap_chain.swap_chain_extent;
+
+        let viewport = vk::Viewport {
+            x: 0.0f32,
+            y: 0.0f32,
+            width: extent.width as f32,
+            height: extent.height as f32,
+            min_depth: 0.0f32,
+            max_depth: 1.0f32,
+            ..Default::default()
+        };
+
+        unsafe { self.device.device.cmd_set_viewport(self.command_buffer, 0, &[ viewport ]) };
+
+        let scissor = vk::Rect2D {
+            offset: vk::Offset2D {
+                x: 0,
+                y: 0,
+            },
+            extent: extent,
+            ..Default::default()
+        };
+
+        unsafe { self.device.device.cmd_set_scissor(self.command_buffer, 0, &[ scissor ]) };
+
+        let mut camera = Camera {
+            view: glm::ext::look_at(
+                glm::vec3(2.0f32, 2.0f32, 2.0f32),
+                glm::vec3(0.0f32, 0.0f32, 0.0f32),
+                glm::vec3(0.0f32, 0.0f32, 1.0f32)
+            ),
+            proj: glm::ext::perspective(
+                glm::radians(45.0f32),
+                extent.width as f32 / extent.height as f32,
+                0.1f32,
+                1000.0f32
+            )
+        };
+
+        camera.proj[1][1] *= -1.0f32;
+
+        let camera_bytes = unsafe {
+            slice::from_raw_parts(
+                &camera as *const Camera as *const u8,
+                std::mem::size_of::<Camera>()
+            )
+        };
+
+        unsafe {
+            self.device.device.cmd_push_constants(
+                self.command_buffer,
+                self.pipeline.pipeline_layout,
+                vk::ShaderStageFlags::VERTEX,
+                0,
+                camera_bytes
+            );
+        }
+
+        let descriptor_set = self.resources.get_descriptor_set().map_err(|err| {
+            println!("Error getting model buffer pointer {:?}", err);
+            CommandBufferError
+        })?;
+
+        unsafe {
+            let dynamic_offset = [ 0 ];
+            let descriptor_set = [ descriptor_set ];
+            self.device.device.cmd_bind_descriptor_sets(
+                self.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.pipeline.pipeline_layout,
+                0,
+                &descriptor_set,
+                &dynamic_offset
+            );
+        }
+
+        unsafe {
+            self.device.device.cmd_bind_vertex_buffers(
+                self.command_buffer,
+                0,
+                &[self.resources.get_vulkan_buffer_handle(self.resources.get_buffer_handle(BufferHandles::VertexGPU).unwrap()).unwrap()],
+                &[0]
+            )
+        };
+
+        unsafe {
+            self.device.device.cmd_bind_index_buffer(
+                self.command_buffer,
+                self.resources.get_vulkan_buffer_handle(self.resources.get_buffer_handle(BufferHandles::IndexGPU).unwrap()).unwrap(),
+                0,
+                vk::IndexType::UINT32
+            )
+        };
+
+        unsafe { self.device.device.cmd_draw_indexed(
+            self.command_buffer,
+            36, // 6 * 6
+            1,
+            0,
+            0,
+            0
+        ) };
+
+        /* ----------------------------------------------------------------------------- */
 
         unsafe { self.device.device.end_command_buffer(self.command_buffer).map_err(|err| {
             println!("Error ending command buffer {}", err);

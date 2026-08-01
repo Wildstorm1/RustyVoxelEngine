@@ -35,4 +35,9 @@ pub trait Frame {
      * Creates the frames draw job
      */
     fn create_draw_job(&self) -> Result<Self::E, FrameError>;
+
+    /*
+     * Submits the frames draw job
+     */
+    fn submit_draw_job(&self, job: Self::E) -> Result<(), FrameError>;
 }
