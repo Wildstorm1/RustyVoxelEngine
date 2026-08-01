@@ -272,6 +272,7 @@ impl Drop for VulkanContext {
 
             self.frame_contexts.iter().for_each(|frame_context| {
                 self.device.device.destroy_semaphore(frame_context.image_available_gpu, None);
+                self.device.device.destroy_semaphore(frame_context.transfer_complete, None);
                 self.device.device.destroy_fence(frame_context.in_flight_fence, None);
             });
         }

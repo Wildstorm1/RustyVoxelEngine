@@ -172,7 +172,7 @@ impl Job for VulkanDrawJob {
         let command_buffers = vec![ self.graphics_command_buffer ];
 
         let submit_info = vk::SubmitInfo {
-            wait_semaphore_count: 1,
+            wait_semaphore_count: 2,
             p_wait_semaphores: wait_semaphores.as_ptr(),
             p_wait_dst_stage_mask: wait_stages.as_ptr(),
             command_buffer_count: 1,
