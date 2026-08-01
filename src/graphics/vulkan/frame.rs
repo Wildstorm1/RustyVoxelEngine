@@ -2,7 +2,9 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use super::super::hal::frame::{ Frame, FrameError, CommandBufferArgs };
+use super::super::hal::frame::{ Frame, FrameError };
+use super::transfer_job::{ VulkanTransferJob };
+use super::draw_job::{ VulkanDrawJob };
 use super::frame_resources::{ VulkanFrameResources };
 use super::command_buffer::{ VulkanCommandBuffer };
 use super::hardware::swapchain::{ VulkanSwapchain };
@@ -19,9 +21,8 @@ pub struct VulkanFrame {
     swap_chain: Arc<VulkanSwapchain>,
     resources: Arc<VulkanFrameResources>,
     pipeline: Arc<VulkanPipeline>,
-    sync_command_buffer: vk::CommandBuffer,
-    graphics_command_buffer: vk::CommandBuffer,
     submitted_command_buffers: Mutex<Vec<vk::CommandBuffer>>,
+    transfer_job: Mutex<Option<VulkanTransferJob>>,
     image_available: vk::Semaphore,
     work_complete: vk::Semaphore,
     transfer_complete: vk::Semaphore,
@@ -39,10 +40,11 @@ impl VulkanFrame {
         transfer_complete: vk::Semaphore,
         work_in_flight: vk::Fence
     ) -> Result<Self, FrameError> {
+        /*
         let frame_buffer_info = vk::CommandBufferAllocateInfo {
             command_pool: device.command_pool,
             level: vk::CommandBufferLevel::PRIMARY,
-            command_buffer_count: 2,
+            command_buffer_count: 1,
             ..Default::default()
         };
 
@@ -53,15 +55,15 @@ impl VulkanFrame {
                 return Err(FrameError);
             }
         };
+        */
 
         Ok(Self {
             device: device,
             swap_chain: swap_chain,
             pipeline: pipeline,
             resources: resources,
-            graphics_command_buffer: command_buffers[0],
-            sync_command_buffer: command_buffers[1],
             submitted_command_buffers: Mutex::new(Vec::new()),
+            transfer_job: Mutex::new(None),
             image_available: image_available,
             work_complete: work_complete,
             work_in_flight: work_in_flight,
@@ -70,6 +72,56 @@ impl VulkanFrame {
     }
 }
 
+impl Frame for VulkanFrame {
+    type T = VulkanTransferJob;
+
+    type E = VulkanDrawJob;
+
+    fn create_transfer_job(&self) -> Result<Self::T, FrameError> {
+        VulkanTransferJob::new(self.device.clone(), self.resources.clone(), self.transfer_complete).map_err(|err| {
+            println!("Error creating transfer job {:?}", err);
+            return FrameError;
+        })
+    }
+
+    fn submit_transfer_job(&self, job: Self::T) -> Result<(), FrameError> {
+        let mut transfer_job_guard = self.transfer_job.lock().map_err(|err| {
+            println!("Error submitting transfer job {:?}", err);
+            return FrameError;
+        })?;
+
+        *transfer_job_guard = Some(job);
+
+        Ok(())
+    }
+
+    fn create_draw_job(&self) -> Result<Self::E, FrameError> {
+        unimplemented!()
+    }
+}
+
+impl Drop for VulkanFrame {
+    fn drop(&mut self) {
+        /*
+        unsafe {
+            self.device.device.free_command_buffers(self.device.command_pool, &[self.graphics_command_buffer]);
+        }
+
+        match self.submitted_command_buffers.lock() {
+            Ok(submitted_buffers) => {
+                if submitted_buffers.len() > 0 {
+                    unsafe { self.device.device.free_command_buffers(self.device.command_pool, &submitted_buffers) };
+                }
+            },
+            Err(err) => {
+                println!("Mutex on command buffer is poisoned {}", err);
+            }
+        }
+        */
+    }
+}
+
+/*
 impl Frame for VulkanFrame {
     type T = VulkanCommandBuffer;
 
@@ -268,22 +320,4 @@ impl Frame for VulkanFrame {
         Ok(())
     }
 }
-
-impl Drop for VulkanFrame {
-    fn drop(&mut self) {
-        unsafe {
-            self.device.device.free_command_buffers(self.device.command_pool, &[self.graphics_command_buffer, self.sync_command_buffer]);
-        }
-
-        match self.submitted_command_buffers.lock() {
-            Ok(submitted_buffers) => {
-                if submitted_buffers.len() > 0 {
-                    unsafe { self.device.device.free_command_buffers(self.device.command_pool, &submitted_buffers) };
-                }
-            },
-            Err(err) => {
-                println!("Mutex on command buffer is poisoned {}", err);
-            }
-        }
-    }
-}
+*/

@@ -2,14 +2,7 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use super::resources::{ Resources };
-use super::command_buffer::{ CommandBuffer };
-use std::sync::Arc;
-
-/*
- * Inputs needed for creating a command buffer
- */
-pub struct CommandBufferArgs {}
+use super::job::{ Job };
 
 /*
  * Simple struct for frame errors
@@ -21,55 +14,25 @@ pub trait Frame {
     /*
      * The implementor must choose the type which is for the same backend
      */
-    type T: CommandBuffer;
+    type T: Job;
 
     /*
      * The implementor must choose the type which is for the same backend
      */
-    type E: Resources;
+    type E: Job;
 
     /*
-     * Creates a new buffer
+     * Creates the frames transfer job
      */
-    fn get_resources(&self) -> Result<Arc<Self::E>, FrameError>;
+    fn create_transfer_job(&self) -> Result<Self::T, FrameError>;
 
     /*
-     * Creates a new command buffer
+     * Submits the frames transfer job
      */
-    fn create_command_buffer(&self, args: CommandBufferArgs) -> Result<Self::T, FrameError>;
+    fn submit_transfer_job(&self, job: Self::T) -> Result<(), FrameError>;
 
     /*
-     * Submits the given command buffer for processing
+     * Creates the frames draw job
      */
-    fn submit_command_buffer(&self, buffer: Self::T) -> Result<(), FrameError>;
-
-    /*
-     * Begins the current frames transfer work
-     */
-    fn begin_sync(&self) -> Result<(), FrameError>;
-
-    /*
-     * Ends the current frames transfer work
-     */
-    fn end_sync(&self) -> Result<(), FrameError>;
-
-    /*
-     * Executes the sync workload previously recorded
-     */
-    fn sync(&self) -> Result<(), FrameError>;
-
-    /*
-     * Begins the current frame's graphics recording
-     */
-    fn begin_frame(&self) -> Result<(), FrameError>;
-
-    /*
-     * Ends the current frame's graphics recording
-     */
-    fn end_frame(&self) -> Result<(), FrameError>;
-
-    /*
-     * Presents the current frame for display
-     */
-    fn present_frame(&self) -> Result<(), FrameError>;
+    fn create_draw_job(&self) -> Result<Self::E, FrameError>;
 }

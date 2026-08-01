@@ -8,3 +8,6 @@ pub mod context;
 pub mod command_buffer;
 pub mod frame_resources;
 pub mod frame;
+pub mod transfer_job;
+pub mod transfer_buffer;
+pub mod draw_job;

@@ -5,7 +5,8 @@
 use crate::graphics::hal::command_buffer::{ CommandBuffer, CopyBufferPacket, DrawIndexedPacket };
 use crate::graphics::hal::context::{ Context };
 use crate::graphics::hal::resources::{ Resources, WriteVertexBuffer, WriteIndexBuffer, WriteModelBuffer, BufferHandles, UniformHandles };
-use crate::graphics::hal::frame::{ Frame, CommandBufferArgs };
+use crate::graphics::hal::frame::{ Frame };
+use crate::graphics::hal::job::{ Job };
 use crate::graphics::hal::stucts::{ Vertex, UniformBufferObject };
 
 /*
@@ -151,7 +152,12 @@ impl <T: Context> Renderer<T> {
          * Stage 1: Copy data into local buffers
          */
 
-        let resources = frame.get_resources().map_err(|err| {
+        let transfer_job = frame.create_transfer_job().map_err(|err| {
+            println!("Error creating transfer job {:?}", err);
+            RendererError
+        })?;
+
+        let resources = transfer_job.get_resources().map_err(|err| {
             println!("Error getting resources api {:?}", err);
             RendererError
         })?;
@@ -193,12 +199,12 @@ impl <T: Context> Renderer<T> {
          * Stage 2: Copy cpu to gpu (next frame?)
          */
 
-        frame.begin_sync().map_err(|err| {
+        transfer_job.begin_job().map_err(|err| {
             println!("Error beginning the sync job {:?}", err);
             RendererError
         })?;
 
-        let mut command_buffer = frame.create_command_buffer(CommandBufferArgs {}).map_err(|err| {
+        let mut command_buffer = transfer_job.create_command_buffer().map_err(|err| {
             println!("Error creating command buffer {:?}", err);
             RendererError
         })?;
@@ -250,18 +256,23 @@ impl <T: Context> Renderer<T> {
             RendererError
         })?;
 
-        frame.submit_command_buffer(command_buffer).map_err(|err| {
+        transfer_job.submit_command_buffer(command_buffer).map_err(|err| {
             println!("Error submitting command buffer {:?}", err);
             RendererError
         })?;
 
-        frame.end_sync().map_err(|err| {
+        transfer_job.end_job().map_err(|err| {
             println!("Error ending the sync job {:?}", err);
             RendererError
         })?;
 
-        frame.sync().map_err(|err| {
+        transfer_job.run_job().map_err(|err| {
             println!("Error running the sync job {:?}", err);
+            RendererError
+        })?;
+
+        frame.submit_transfer_job(transfer_job).map_err(|err| {
+            println!("Error submitting the sync job {:?}", err);
             RendererError
         })?;
 
@@ -269,10 +280,12 @@ impl <T: Context> Renderer<T> {
          * Stage 3: Issue draw calls
          */
 
+        /*
         frame.begin_frame().map_err(|err| {
             println!("Error beginning frame {:?}", err);
             RendererError
         })?;
+        */
 
         /*
         match command_buffer.draw_indexed(DrawIndexedPacket {
@@ -291,6 +304,7 @@ impl <T: Context> Renderer<T> {
         };
         */
 
+        /*
         frame.end_frame().map_err(|err| {
             println!("Error ending frame {:?}", err);
             RendererError
@@ -300,6 +314,7 @@ impl <T: Context> Renderer<T> {
             println!("Error presenting frame {:?}", err);
             RendererError
         })?;
+        */
 
         /* ---------------------------------------------------------------------------------------------------- */
 
