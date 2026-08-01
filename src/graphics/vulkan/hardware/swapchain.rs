@@ -257,11 +257,15 @@ impl VulkanSwapchain {
 
 impl Drop for VulkanSwapchain {
     fn drop(&mut self) {
+        println!("Destroying swapchain wrapper");
+
         unsafe {
             self.swap_chain_image_views.iter().for_each(|view| {
+                println!("Destroying vulkan swapchain image view: {:?}", *view);
                 self.device.device.destroy_image_view(*view, None);
             });
 
+            println!("Destroying vulkan swapchain: {:?}", self.swap_chain);
             self.device.swapchain_extension.destroy_swapchain(self.swap_chain, None);
         }
     }

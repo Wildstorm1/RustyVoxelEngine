@@ -41,7 +41,10 @@ fn main() {
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
-                Event::Quit { .. } => break 'running,
+                Event::Quit { .. } => {
+                    println!("Game exit requested");
+                    break 'running
+                },
                 Event::Window { win_event, .. } => {
                     match win_event {
                         WindowEvent::PixelSizeChanged(x, y) => {

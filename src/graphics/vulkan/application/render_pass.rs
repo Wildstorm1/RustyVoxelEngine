@@ -325,15 +325,22 @@ impl VulkanRenderPass {
 
 impl Drop for VulkanRenderPass {
     fn drop(&mut self) {
+        println!("Destroying render pass wrapper");
+
         unsafe {
+            println!("Destroying vulkan depth image: {:?}", self.depth_image);
             self.device.device.destroy_image(self.depth_image, None);
+            println!("Destroying vulkan depth image memory: {:?}", self.depth_memory);
             self.device.device.free_memory(self.depth_memory, None);
+            println!("Destroying vulkan depth image view: {:?}", self.depth_view);
             self.device.device.destroy_image_view(self.depth_view, None);
 
             self.frame_buffers.iter().for_each(|framebuffer| {
+                println!("Destroying vulkan framebuffer: {:?}", *framebuffer);
                 self.device.device.destroy_framebuffer(*framebuffer, None);
             });
 
+            println!("Destroying vulkan render pass: {:?}", self.render_pass);
             self.device.device.destroy_render_pass(self.render_pass, None);
         }
     }

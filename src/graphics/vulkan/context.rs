@@ -261,18 +261,24 @@ impl Context for VulkanContext {
 
 impl Drop for VulkanContext {
     fn drop(&mut self) {
+        println!("Destroying context wrapper");
+
         unsafe {
             let _ = self.device.device.device_wait_idle().map_err(|err| {
                 println!("Error waiting for device to be idle {:?}", err);
             });
 
             self.swap_chain_contexts.iter().for_each(|view_context| {
+                println!("Destroying vulkan semaphore: {:?}", view_context.work_complete_gpu);
                 self.device.device.destroy_semaphore(view_context.work_complete_gpu, None);
             });
 
             self.frame_contexts.iter().for_each(|frame_context| {
+                println!("Destroying vulkan semaphore: {:?}", frame_context.image_available_gpu);
                 self.device.device.destroy_semaphore(frame_context.image_available_gpu, None);
+                println!("Destroying vulkan semaphore: {:?}", frame_context.transfer_complete);
                 self.device.device.destroy_semaphore(frame_context.transfer_complete, None);
+                println!("Destroying vulkan fence: {:?}", frame_context.in_flight_fence);
                 self.device.device.destroy_fence(frame_context.in_flight_fence, None);
             });
         }

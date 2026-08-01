@@ -102,7 +102,10 @@ impl VulkanInstance {
 
 impl Drop for VulkanInstance {
     fn drop(&mut self) {
+        println!("Destroying instance wrapper");
+
         unsafe {
+            println!("Destroying vulkan instance");
             self.instance.destroy_instance(None);
         }
     }

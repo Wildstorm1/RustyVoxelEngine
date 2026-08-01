@@ -424,11 +424,18 @@ impl VulkanDevice {
 
 impl Drop for VulkanDevice {
     fn drop(&mut self) {
+        println!("Destroying device wrapper");
+
         unsafe {
+            println!("Destroying vulkan descriptor pool: {:?}", self.descriptor_pool);
             self.device.destroy_descriptor_pool(self.descriptor_pool, None);
+            println!("Destroying vulkan command pool: {:?}", self.command_pool);
             self.device.destroy_command_pool(self.command_pool, None);
+            println!("Destroying vulkan descriptor set layout: {:?}", self.descriptor_set_layout);
             self.device.destroy_descriptor_set_layout(self.descriptor_set_layout, None);
+            println!("Destroying vulkan device");
             self.device.destroy_device(None);
+            println!("Destroying vulkan surface");
             self.instance.surface.destroy_surface(self.surface, None);
         }
     }

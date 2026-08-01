@@ -108,6 +108,8 @@ impl Frame for VulkanFrame {
 
 impl Drop for VulkanFrame {
     fn drop(&mut self) {
+        println!("Destroying frame");
+
         /*
         unsafe {
             self.device.device.free_command_buffers(self.device.command_pool, &[self.graphics_command_buffer]);

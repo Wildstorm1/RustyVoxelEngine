@@ -311,19 +311,27 @@ impl VulkanResources {
 
 impl Drop for VulkanResources {
     fn drop(&mut self) {
+        println!("Destroying resources wrapper");
+
         unsafe {
             self.buffer_handles.values().into_iter().for_each(|handle_data| {
+                println!("Destroying resource buffer: {:?}", handle_data.buffer);
                 self.device.device.destroy_buffer(handle_data.buffer, None);
+                println!("Destroying resource buffer memory: {:?}", handle_data.memory);
                 self.device.device.free_memory(handle_data.memory, None);
             });
 
             self.staging_handles.values().into_iter().for_each(|handle_data| {
+                println!("Destroying staging buffer: {:?}", handle_data.buffer);
                 self.device.device.destroy_buffer(handle_data.buffer, None);
+                println!("Destroying staging buffer memory: {:?}", handle_data.memory);
                 self.device.device.free_memory(handle_data.memory, None);
             });
 
             self.uniform_handles.values().into_iter().for_each(|handle_data| {
+                println!("Destroying uniform buffer: {:?}", handle_data.buffer);
                 self.device.device.destroy_buffer(handle_data.buffer, None);
+                println!("Destroying uniform buffer memory: {:?}", handle_data.memory);
                 self.device.device.free_memory(handle_data.memory, None);
             });
         }

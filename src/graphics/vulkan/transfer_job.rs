@@ -137,6 +137,8 @@ impl Job for VulkanTransferJob {
 
 impl Drop for VulkanTransferJob {
     fn drop(&mut self) {
+        println!("Destroying transfer job");
+
         unsafe {
             self.device.device.free_command_buffers(self.device.command_pool, &[self.sync_command_buffer]);
         }

@@ -319,8 +319,12 @@ impl VulkanPipeline {
 
 impl Drop for VulkanPipeline {
     fn drop(&mut self) {
+        println!("Destroying pipeline wrapper");
+
         unsafe {
+            println!("Destroying vulkan pipeline: {:?}", self.pipeline);
             self.device.device.destroy_pipeline(self.pipeline, None);
+            println!("Destroying vulkan pipeline layout: {:?}", self.pipeline_layout);
             self.device.device.destroy_pipeline_layout(self.pipeline_layout, None);
         }
     }
