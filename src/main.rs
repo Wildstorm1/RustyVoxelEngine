@@ -80,6 +80,18 @@ fn main() {
                                     println!("Game exit requested");
                                     break 'running
                                 },
+                                Keycode::W => {
+                                    camera_pos = camera_pos + (camera_front * 0.2f32);
+                                },
+                                Keycode::S => {
+                                    camera_pos = camera_pos - (camera_front * 0.2f32);
+                                },
+                                Keycode::A => {
+                                    camera_pos = camera_pos - (glm::normalize(glm::cross(camera_front, camera_up)) * 0.2f32);
+                                },
+                                Keycode::D => {
+                                    camera_pos = camera_pos + (glm::normalize(glm::cross(camera_front, camera_up)) * 0.2f32);
+                                },
                                 _ => {}
                             }
                         },
