@@ -5,12 +5,13 @@
 use super::super::hal::command_buffer::{
     CommandBuffer, CommandBufferError, DrawIndexedPacket, CopyBufferPacket
 };
-use super::super::hal::stucts::{ Camera };
+use super::super::hal::stucts::{ Camera, UniformBufferObject };
 use super::frame_resources::{ VulkanFrameResources };
 use super::hardware::swapchain::{ VulkanSwapchain };
 use super::hardware::device::{ VulkanDevice };
 use super::application::pipeline::{ VulkanPipeline };
 use ash::{ vk };
+use std::mem::{ size_of };
 use std::slice;
 use std::sync::Arc;
 
@@ -103,7 +104,7 @@ fn push_draw_indexed(
     let camera_bytes = unsafe {
         slice::from_raw_parts(
             &packet.camera as *const Camera as *const u8,
-            std::mem::size_of::<Camera>()
+            size_of::<Camera>()
         )
     };
 
@@ -124,7 +125,7 @@ fn push_draw_indexed(
             pipeline_layout,
             0,
             &[ descriptor_set ],
-            &[ packet.uniform_index as u32 ]
+            &[ packet.uniform_index as u32 * size_of::<UniformBufferObject>() as u32 ]
         );
     }
 

@@ -215,7 +215,7 @@ impl Job for VulkanDrawJob {
 
 impl Drop for VulkanDrawJob {
     fn drop(&mut self) {
-        println!("Destroying draw job");
+        //println!("Destroying draw job");
 
         unsafe {
             self.device.device.free_command_buffers(self.device.command_pool, &[self.graphics_command_buffer]);

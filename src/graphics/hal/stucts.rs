@@ -15,6 +15,7 @@ pub struct UniformBufferObject {
     pub model: Matrix4<f32>,
 }
 
+#[derive(Clone, Copy)]
 #[repr(C)]
 pub struct Camera {
     pub view: Matrix4<f32>,

@@ -107,6 +107,6 @@ impl Frame for VulkanFrame {
 
 impl Drop for VulkanFrame {
     fn drop(&mut self) {
-        println!("Destroying frame");
+        //println!("Destroying frame");
     }
 }

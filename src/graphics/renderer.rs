@@ -199,6 +199,26 @@ impl <T: Context> Renderer<T> {
             RendererError
         }) }?;
 
+        let model_matrix = UniformBufferObject {
+            model: glm::ext::translate(
+                &glm::mat4(
+                    1.0f32, 0.0f32, 0.0f32, 0.0f32,
+                    0.0f32, 1.0f32, 0.0f32, 0.0f32,
+                    0.0f32, 0.0f32, 1.0f32, 0.0f32,
+                    0.0f32, 0.0f32, 0.0f32, 1.0f32
+                ),
+                glm::vec3(2.0f32, 0.0f32, 0.0f32)
+            )
+        };
+
+        unsafe { resources.buffer_model_data_cpu_side(WriteModelBuffer {
+            offset: 1,
+            model: model_matrix
+        }).map_err(|err| {
+            println!("Error buffering model {:?}", err);
+            RendererError
+        }) }?;
+
         /*
          * Stage 2: Copy cpu to gpu (next frame?)
          */
@@ -304,6 +324,22 @@ impl <T: Context> Renderer<T> {
             index: index_gpu_buffer,
             camera: camera,
             uniform_index: 0,
+            vertex_offset: 0,
+            index_offset: 0,
+            indices_count: index_list.len() as u32,
+        }) {
+            Ok(result) => result,
+            Err(err) => {
+                println!("Error recording command buffer {:?}", err);
+                return Err(RendererError);
+            }
+        };
+
+        match draw_command_buffer.draw_indexed(DrawIndexedPacket {
+            vertex: vertex_gpu_buffer,
+            index: index_gpu_buffer,
+            camera: camera,
+            uniform_index: 1,
             vertex_offset: 0,
             index_offset: 0,
             indices_count: index_list.len() as u32,

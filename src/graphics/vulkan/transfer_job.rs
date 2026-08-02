@@ -117,10 +117,11 @@ impl Job for VulkanTransferJob {
 
     fn run_job(&self) -> Result<(), JobError> {
         let signal_semaphores = [ self.transfer_complete ];
+        let command_buffers = [ self.sync_command_buffer ];
 
         let submit_info = vk::SubmitInfo {
             command_buffer_count: 1,
-            p_command_buffers: [ self.sync_command_buffer ].as_ptr(),
+            p_command_buffers: command_buffers.as_ptr(),
             signal_semaphore_count: 1,
             p_signal_semaphores: signal_semaphores.as_ptr(),
             ..Default::default()
@@ -137,7 +138,7 @@ impl Job for VulkanTransferJob {
 
 impl Drop for VulkanTransferJob {
     fn drop(&mut self) {
-        println!("Destroying transfer job");
+        //println!("Destroying transfer job");
 
         unsafe {
             self.device.device.free_command_buffers(self.device.command_pool, &[self.sync_command_buffer]);

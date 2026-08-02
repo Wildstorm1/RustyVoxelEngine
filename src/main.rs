@@ -8,7 +8,7 @@ use crate::graphics::{ Context, VulkanContext, Camera };
 use sdl3::{pixels::Color, video::WindowFlags};
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use ash::{vk, Entry};
 
 mod graphics;
@@ -50,6 +50,8 @@ fn main() {
     let mut frame_num = 0;
 
     'running: loop {
+        let start_time = Instant::now();
+
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => {
@@ -155,5 +157,7 @@ fn main() {
         }
 
         frame_num = frame_num + 1;
+        let end_time = Instant::now();
+        println!("Frame generation time (ms): {:?}", end_time.duration_since(start_time));
     }
 }
