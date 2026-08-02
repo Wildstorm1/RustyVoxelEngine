@@ -34,7 +34,7 @@ pub trait Context {
     /*
      * Returns the extent (width / height) of the image
      */
-    fn image_extent(&mut self) -> Result<ImageExtent, ContextError>;
+    fn image_extent(&self) -> Result<ImageExtent, ContextError>;
 
     /*
      * Handles rebuilding when the window resizes

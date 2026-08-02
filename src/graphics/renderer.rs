@@ -3,7 +3,7 @@
  */
 
 use crate::graphics::hal::command_buffer::{ CommandBuffer, CopyBufferPacket, DrawIndexedPacket };
-use crate::graphics::hal::context::{ Context };
+use crate::graphics::hal::context::{ Context, ImageExtent };
 use crate::graphics::hal::resources::{ Resources, WriteVertexBuffer, WriteIndexBuffer, WriteModelBuffer, BufferHandles };
 use crate::graphics::hal::frame::{ Frame };
 use crate::graphics::hal::job::{ Job };
@@ -132,7 +132,11 @@ impl <T: Context> Renderer<T> {
         }
     }
 
-    pub fn render(&mut self) -> Result<(), RendererError> {
+    pub fn extent(&self) -> Result<ImageExtent, RendererError> {
+        self.context.image_extent().map_err(|_| { RendererError })
+    }
+
+    pub fn render(&mut self, camera: Camera) -> Result<(), RendererError> {
         let frame = self.context.next_frame().map_err(|err| {
             println!("Error getting next frame {:?}", err);
             RendererError
@@ -279,27 +283,6 @@ impl <T: Context> Renderer<T> {
         /*
          * Stage 3: Issue draw calls
          */
-
-        let extent = self.context.image_extent().map_err(|err| {
-            println!("Error getting image extent {:?}", err);
-            RendererError
-        })?;
-
-        let mut camera = Camera {
-            view: glm::ext::look_at(
-                glm::vec3(2.0f32, 2.0f32, 2.0f32),
-                glm::vec3(0.0f32, 0.0f32, 0.0f32),
-                glm::vec3(0.0f32, 0.0f32, 1.0f32)
-            ),
-            proj: glm::ext::perspective(
-                glm::radians(45.0f32),
-                extent.width as f32 / extent.height as f32,
-                0.1f32,
-                1000.0f32
-            )
-        };
-
-        camera.proj[1][1] *= -1.0f32;
 
         let draw_job = frame.create_draw_job().map_err(|err| {
             println!("Error creating draw job {:?}", err);

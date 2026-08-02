@@ -3,7 +3,7 @@
  */
 
 use crate::graphics::renderer::{ Renderer };
-use crate::graphics::{ CommandBuffer, Context, Resources, VulkanContext };
+use crate::graphics::{ Context, VulkanContext, Camera };
 
 use sdl3::{pixels::Color, video::WindowFlags};
 use sdl3::event::{Event, WindowEvent};
@@ -26,7 +26,7 @@ fn main() {
         .map_err(|e| e.to_string())
         .unwrap();
 
-    let context = match VulkanContext::new(window) {
+    let context = match VulkanContext::new(&window) {
         Ok(context) => Box::new(context),
         Err(err) => {
             println!("Error setting up context {:?}", err);
@@ -35,8 +35,19 @@ fn main() {
     };
 
     let mut renderer = Renderer::new(context);
+    let extent = renderer.extent().unwrap();
+    sdl_context.mouse().warp_mouse_in_window(&window, extent.width as f32 / 2.0, extent.height as f32 / 2.0);
+
+    let mut dx_mov = 0.0f32;
+    let mut dy_mov = 0.0f32;
+    let mut yaw = 4.712f32; // 3 * pi / 2
+    let mut pitch = 0.0f32;
+    let mut camera_pos = glm::vec3(0.0f32, 0.0f32, 3.0f32);
+    let mut camera_front = glm::vec3(0.0f32, 0.0f32, -1.0f32);
+    let mut camera_up = glm::vec3(0.0f32, 1.0f32, 0.0f32);
 
     let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string()).unwrap();
+    let mut frame_num = 0;
 
     'running: loop {
         for event in event_pump.poll_iter() {
@@ -61,16 +72,76 @@ fn main() {
                         _ => {}
                     }
                 },
+                Event::KeyDown { keycode, .. } => {
+                    match keycode {
+                        Some(keycode) => {
+                            match keycode {
+                                Keycode::Escape => {
+                                    println!("Game exit requested");
+                                    break 'running
+                                },
+                                _ => {}
+                            }
+                        },
+                        _ => {}
+                    }
+                },
+                Event::MouseMotion { x, y, xrel, yrel, .. } => {
+                    // Skip resetting the mouse to screen center
+                    if x != extent.width as f32 / 2.0 && y != extent.height as f32 / 2.0 {
+                        dx_mov = dx_mov + xrel;
+                        dy_mov = dy_mov + yrel;
+                        println!("Frame {} - {} {}", frame_num, x, y);
+
+                        sdl_context.mouse().warp_mouse_in_window(&window, extent.width as f32 / 2.0, extent.height as f32 / 2.0);
+                    }
+                }
                 _ => {}
             }
         }
 
-        match renderer.render() {
+        let extent = renderer.extent().unwrap();
+
+        let sensitivity = 0.01f32;
+        let dx = dx_mov * sensitivity;
+        let dy = dy_mov * sensitivity;
+        dx_mov = 0.0f32;
+        dy_mov = 0.0f32;
+
+        yaw = yaw + dx;
+        pitch = pitch - dy;
+
+        if pitch > 1.55f32 { // pi / 2 - 0.017
+            pitch = 1.55f32;
+        }
+
+        if pitch < -1.55f32 { // - pi / 2 + 0.017
+            pitch = -1.55f32;
+        }
+
+        let direction = glm::vec3(yaw.cos() * pitch.cos(), pitch.sin(), yaw.sin() * pitch.cos());
+        camera_front = glm::normalize(direction);
+
+        let mut camera = Camera {
+            view: glm::ext::look_at(camera_pos, camera_pos + camera_front, camera_up),
+            proj: glm::ext::perspective(
+                glm::radians(45.0f32),
+                extent.width as f32 / extent.height as f32,
+                0.1f32,
+                1000.0f32
+            )
+        };
+
+        camera.proj[1][1] *= -1.0f32;
+
+        match renderer.render(camera) {
             Ok(_) => (),
             Err(err) => {
                 println!("Error rendering in main loop {:?}", err);
                 break 'running
             }
         }
+
+        frame_num = frame_num + 1;
     }
 }

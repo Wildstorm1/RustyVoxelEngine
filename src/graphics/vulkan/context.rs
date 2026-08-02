@@ -33,9 +33,9 @@ struct SwapchainViewContext {
 /*
  * Vulkan implementation of context
  */
-pub struct VulkanContext {
+pub struct VulkanContext<'a> {
     device: Arc<VulkanDevice>,
-    window: Window,
+    window: &'a Window,
     swapchain: Option<Arc<VulkanSwapchain>>,
     resources: Arc<VulkanResources>,
     render_pass: Option<Arc<VulkanRenderPass>>,
@@ -46,8 +46,8 @@ pub struct VulkanContext {
     frame_number: usize,
 }
 
-impl VulkanContext {
-    pub fn new(window: Window) -> Result<Self, ContextError> {
+impl <'a> VulkanContext<'a> {
+    pub fn new(window: &'a Window) -> Result<Self, ContextError> {
         let device = unsafe { match VulkanDevice::new(&window) {
             Ok(device) => Arc::new(device),
             Err(err) => {
@@ -175,7 +175,7 @@ impl VulkanContext {
     }
 }
 
-impl Context for VulkanContext {
+impl <'a> Context for VulkanContext<'a> {
     type T = VulkanFrame;
 
     fn next_frame(&mut self) -> Result<Arc<Self::T>, ContextError> {
@@ -228,7 +228,7 @@ impl Context for VulkanContext {
         Ok(next_frame)
     }
 
-    fn image_extent(&mut self) -> Result<ImageExtent, ContextError> {
+    fn image_extent(&self) -> Result<ImageExtent, ContextError> {
         let swapchain_extent = self.swapchain.clone().unwrap().swap_chain_extent;
 
         Ok(ImageExtent {
@@ -251,7 +251,7 @@ impl Context for VulkanContext {
             self.frames[i] = None;
         }
 
-        self.swapchain = unsafe { match VulkanSwapchain::new(self.device.clone(), &self.window) {
+        self.swapchain = unsafe { match VulkanSwapchain::new(self.device.clone(), self.window) {
             Ok(swap_chain) => Some(Arc::new(swap_chain)),
             Err(err) => {
                 println!("Error creating vulkan swapchain {:?}", err);
@@ -279,7 +279,7 @@ impl Context for VulkanContext {
     }
 }
 
-impl Drop for VulkanContext {
+impl <'a> Drop for VulkanContext<'a> {
     fn drop(&mut self) {
         println!("Destroying context wrapper");
 
