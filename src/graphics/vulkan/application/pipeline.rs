@@ -103,7 +103,7 @@ impl VulkanPipeline {
         let shaders = load_shaders(device.clone())?;
 
         let range = vk::PushConstantRange {
-            stage_flags: vk::ShaderStageFlags::VERTEX,
+            stage_flags: vk::ShaderStageFlags::MESH_EXT,
             offset: 0,
             size: size_of::<Camera>() as u32,
             ..Default::default()

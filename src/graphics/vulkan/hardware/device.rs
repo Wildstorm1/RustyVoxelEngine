@@ -251,7 +251,7 @@ fn create_descriptor_set_resources(
         binding: 0,
         descriptor_type: vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
         descriptor_count: 1,
-        stage_flags: vk::ShaderStageFlags::VERTEX,
+        stage_flags: vk::ShaderStageFlags::MESH_EXT,
         ..Default::default()
     };
 

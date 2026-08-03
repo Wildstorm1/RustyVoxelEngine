@@ -76,24 +76,6 @@ fn push_draw_indexed(
     command_buffer: vk::CommandBuffer,
     packet: DrawIndexedPacket
 ) -> Result<(), CommandBufferError> {
-    let vertex_buffer = resources.get_vulkan_buffer_handle(packet.vertex).map_err(|err| {
-        println!("Error looking up vertex buffer with handle {}! {:?}", packet.vertex, err);
-        CommandBufferError
-    })?;
-
-    let index_buffer = resources.get_vulkan_buffer_handle(packet.index).map_err(|err| {
-        println!("Error looking up index buffer with handle {}! {:?}", packet.index, err);
-        CommandBufferError
-    })?;
-
-    unsafe { device.device.cmd_bind_vertex_buffers(
-        command_buffer, 0, &[vertex_buffer], &[0]
-    ) };
-
-    unsafe { device.device.cmd_bind_index_buffer(
-        command_buffer, index_buffer, 0, vk::IndexType::UINT32
-    ) };
-
     let descriptor_set = resources.get_descriptor_set().map_err(|err| {
         println!("Error getting model buffer pointer {:?}", err);
         CommandBufferError
@@ -112,7 +94,7 @@ fn push_draw_indexed(
         device.device.cmd_push_constants(
             command_buffer,
             pipeline_layout,
-            vk::ShaderStageFlags::VERTEX,
+            vk::ShaderStageFlags::MESH_EXT,
             0,
             camera_bytes
         );
