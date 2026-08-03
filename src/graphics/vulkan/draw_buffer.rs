@@ -112,7 +112,7 @@ fn push_draw(
     }
 
     unsafe { 
-        device.mesh_shader_extension.cmd_draw_mesh_tasks(command_buffer, 1, 1, 1);
+        device.mesh_shader_extension.cmd_draw_mesh_tasks(command_buffer, 64, 1, 1);
     };
 
     Ok(())

@@ -11,5 +11,5 @@
 layout(local_size_x = 1) in;
 
 void main() {
-    EmitMeshTasksEXT(1, 1, 1);
+    EmitMeshTasksEXT(64, 1, 1);
 }

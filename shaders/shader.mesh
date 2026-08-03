@@ -32,7 +32,15 @@ vec3 colors[4] = vec3[] (
 
 void main() {
     SetMeshOutputsEXT(24, 12);
-    mat4 pvm_matrix = camera.proj * camera.view * ubo.model;
+
+    uint index = gl_GlobalInvocationID.x;
+
+    mat4 pvm_matrix = camera.proj * camera.view * ubo.model * mat4(
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        index, 0.0, 0.0, 1.0
+    );
 
     // Right face
     gl_MeshVerticesEXT[0].gl_Position = pvm_matrix * vec4(0.0, 0.0, 1.0, 1.0);

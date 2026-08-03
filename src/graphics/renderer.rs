@@ -164,6 +164,7 @@ impl <T: Context> Renderer<T> {
             }
         };
 
+        /*
         match draw_command_buffer.draw(DrawPacket {
             camera: camera,
             model_uniform_index: 1,
@@ -174,6 +175,7 @@ impl <T: Context> Renderer<T> {
                 return Err(RendererError);
             }
         };
+        */
 
         draw_command_buffer.stage().map_err(|err| {
             println!("Error staging draw command buffer {:?}", err);
