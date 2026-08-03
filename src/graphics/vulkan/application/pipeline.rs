@@ -30,7 +30,8 @@ pub struct VulkanPipeline {
 }
 
 struct ShaderDetails {
-    vertex_module: vk::ShaderModule,
+    mesh_module: vk::ShaderModule,
+    task_module: vk::ShaderModule,
     fragment_module: vk::ShaderModule
 }
 
@@ -82,11 +83,13 @@ fn create_shader_module(
 fn load_shaders(
     device: Arc<VulkanDevice>
 ) -> Result<ShaderDetails, PipelineError> {
-    let vertex_module = create_shader_module(device.clone(), "./shaders/vert.spv")?;
+    let mesh_module = create_shader_module(device.clone(), "./shaders/mesh.spv")?;
+    let task_module = create_shader_module(device.clone(), "./shaders/task.spv")?;
     let fragment_module = create_shader_module(device.clone(), "./shaders/frag.spv")?;
 
     Ok(ShaderDetails {
-        vertex_module: vertex_module,
+        mesh_module: mesh_module,
+        task_module: task_module,
         fragment_module: fragment_module,
     })
 }
@@ -130,9 +133,16 @@ impl VulkanPipeline {
             }
         };
 
-        let vert_shader_stage_info = vk::PipelineShaderStageCreateInfo {
-            stage: vk::ShaderStageFlags::VERTEX,
-            module: shaders.vertex_module,
+        let mesh_shader_stage_info = vk::PipelineShaderStageCreateInfo {
+            stage: vk::ShaderStageFlags::MESH_EXT,
+            module: shaders.mesh_module,
+            p_name: main_string.as_ptr(),
+            ..Default::default()
+        };
+
+        let task_shader_stage_info = vk::PipelineShaderStageCreateInfo {
+            stage: vk::ShaderStageFlags::TASK_EXT,
+            module: shaders.task_module,
             p_name: main_string.as_ptr(),
             ..Default::default()
         };
@@ -144,50 +154,12 @@ impl VulkanPipeline {
             ..Default::default()
         };
 
-        let shader_infos = vec![ vert_shader_stage_info, frag_shader_stage_info ];
+        let shader_infos = vec![ mesh_shader_stage_info, task_shader_stage_info, frag_shader_stage_info ];
         let dynamic_states = vec![ vk::DynamicState::VIEWPORT, vk::DynamicState::SCISSOR ];
 
         let dynamic_state = vk::PipelineDynamicStateCreateInfo {
             dynamic_state_count: dynamic_states.len() as u32,
             p_dynamic_states: dynamic_states.as_ptr(),
-            ..Default::default()
-        };
-
-        let binding_description = vk::VertexInputBindingDescription {
-            binding: 0,
-            stride: size_of::<Vertex>() as u32,
-            input_rate: vk::VertexInputRate::VERTEX,
-            ..Default::default()
-        };
-
-        let attribute_descriptions = vec![
-            vk::VertexInputAttributeDescription {
-                binding: 0,
-                location: 0,
-                format: vk::Format::R32G32B32_SFLOAT,
-                offset: offset_of!(Vertex, pos) as u32,
-                ..Default::default()
-            },
-            vk::VertexInputAttributeDescription {
-                binding: 0,
-                location: 1,
-                format: vk::Format::R32G32B32_SFLOAT,
-                offset: offset_of!(Vertex, color) as u32,
-                ..Default::default()
-            },
-        ];
-
-        let vertex_input_info = vk::PipelineVertexInputStateCreateInfo {
-            vertex_binding_description_count: 1,
-            p_vertex_binding_descriptions: &binding_description,
-            vertex_attribute_description_count: attribute_descriptions.len() as u32,
-            p_vertex_attribute_descriptions: attribute_descriptions.as_ptr(),
-            ..Default::default()
-        };
-
-        let input_assembly = vk::PipelineInputAssemblyStateCreateInfo {
-            topology: vk::PrimitiveTopology::TRIANGLE_LIST,
-            primitive_restart_enable: vk::FALSE,
             ..Default::default()
         };
 
@@ -278,10 +250,8 @@ impl VulkanPipeline {
 
         let pipeline_infos = vec![
             vk::GraphicsPipelineCreateInfo {
-                stage_count: 2,
+                stage_count: 3,
                 p_stages: shader_infos.as_ptr(),
-                p_vertex_input_state: &vertex_input_info,
-                p_input_assembly_state: &input_assembly,
                 p_viewport_state: &viewport_state,
                 p_rasterization_state: &rasterizer,
                 p_multisample_state: &multi_sampling,
@@ -305,7 +275,8 @@ impl VulkanPipeline {
         };
 
         unsafe {
-            device.device.destroy_shader_module(shaders.vertex_module, None);
+            device.device.destroy_shader_module(shaders.mesh_module, None);
+            device.device.destroy_shader_module(shaders.task_module, None);
             device.device.destroy_shader_module(shaders.fragment_module, None);
         }
 

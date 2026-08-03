@@ -158,6 +158,6 @@ fn main() {
 
         frame_num = frame_num + 1;
         let end_time = Instant::now();
-        println!("Frame generation time (ms): {:?}", end_time.duration_since(start_time));
+        //println!("Frame generation time (ms): {:?}", end_time.duration_since(start_time));
     }
 }

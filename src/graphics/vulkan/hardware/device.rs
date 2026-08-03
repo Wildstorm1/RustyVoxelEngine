@@ -5,7 +5,7 @@
 use super::instance::{VulkanInstance};
 use std::collections::{HashMap, HashSet};
 use std::ffi::{CStr, CString, c_void};
-use ash::{vk, khr, Device};
+use ash::{vk, khr, ext, Device};
 use sdl3::video::Window;
 
 /*
@@ -42,6 +42,7 @@ pub struct VulkanDevice {
     pub device: Device,
     pub queues: DeviceQueueMetadata,
     pub swapchain_extension: khr::swapchain::Device,
+    pub mesh_shader_extension: ext::mesh_shader::Device,
     pub command_pool: vk::CommandPool,
     pub descriptor_pool: vk::DescriptorPool,
     pub descriptor_set_layout: vk::DescriptorSetLayout,
@@ -297,7 +298,8 @@ impl VulkanDevice {
         let extensions = vec![
             "VK_KHR_swapchain",
             "VK_EXT_mesh_shader",
-            "VK_EXT_descriptor_indexing"
+            "VK_EXT_descriptor_indexing",
+            "VK_KHR_maintenance4"
         ];
 
         let extensions_strings: Vec<String> = extensions.iter()
@@ -348,7 +350,20 @@ impl VulkanDevice {
             }
         ];
 
+        let mesh_shader_features = vk::PhysicalDeviceMeshShaderFeaturesEXT {
+            mesh_shader: vk::TRUE,
+            task_shader: vk::TRUE,
+            ..Default::default()
+        };
+
+        let vulkan_1_3_features= vk::PhysicalDeviceVulkan13Features {
+            p_next: (&raw const mesh_shader_features) as *mut c_void,
+            maintenance4: vk::TRUE,
+            ..Default::default()
+        };
+
         let descriptor_indexing_features = vk::PhysicalDeviceDescriptorIndexingFeatures {
+            p_next: (&raw const vulkan_1_3_features) as *mut c_void,
             descriptor_binding_uniform_buffer_update_after_bind: vk::TRUE,
             descriptor_binding_partially_bound: vk::TRUE,
             ..Default::default()
@@ -402,12 +417,15 @@ impl VulkanDevice {
 
         let (descriptor_pool, descriptor_set_layout, descriptor_sets) = create_descriptor_set_resources(&logical_device)?;
 
+        let mesh_shader_device = ext::mesh_shader::Device::new(&instance.instance, &logical_device);
+
         Ok ( Self {
             instance: instance,
             physical_device: best_device_handle,
             surface: surface_handle,
             device: logical_device,
             swapchain_extension: swapchain_device,
+            mesh_shader_extension: mesh_shader_device,
             queues: DeviceQueueMetadata {
                 graphics_index: device_queues.graphics_index.unwrap(),
                 graphics_queue: graphics_queue,

@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
+ */
+
 #version 450
 
 layout(location = 0) in vec3 inPosition;

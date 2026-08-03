@@ -130,14 +130,7 @@ fn push_draw_indexed(
     }
 
     unsafe { 
-        device.device.cmd_draw_indexed(
-            command_buffer,
-            packet.indices_count,
-            1,
-            packet.index_offset,
-            packet.vertex_offset,
-            0
-        )
+        device.mesh_shader_extension.cmd_draw_mesh_tasks(command_buffer, 1, 1, 1);
     };
 
     Ok(())
