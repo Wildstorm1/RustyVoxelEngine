@@ -7,16 +7,11 @@ use super::resources::{ Buffer };
 use std::fmt;
 
 /*
- * Arguments for a draw indexed command
+ * Arguments for a draw mesh command
  */
-pub struct DrawIndexedPacket {
-    pub vertex: Buffer,
-    pub index: Buffer,
+pub struct DrawPacket {
     pub camera: Camera,
-    pub uniform_index: u64,
-    pub vertex_offset: i32,
-    pub index_offset: u32,
-    pub indices_count: u32,
+    pub model_uniform_index: u64,
 }
 
 /*
@@ -46,7 +41,7 @@ pub trait CommandBuffer {
     /*
      * Issues an indexed draw command
      */
-    fn draw_indexed(&mut self, packet: DrawIndexedPacket) -> Result<(), CommandBufferError>;
+    fn draw(&mut self, packet: DrawPacket) -> Result<(), CommandBufferError>;
 
     /*
      * Issues a copy buffer command

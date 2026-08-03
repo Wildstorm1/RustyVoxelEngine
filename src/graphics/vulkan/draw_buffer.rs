@@ -3,7 +3,7 @@
  */
 
 use super::super::hal::command_buffer::{
-    CommandBuffer, CommandBufferError, DrawIndexedPacket, CopyBufferPacket
+    CommandBuffer, CommandBufferError, DrawPacket, CopyBufferPacket
 };
 use super::super::hal::stucts::{ Camera, UniformBufferObject };
 use super::frame_resources::{ VulkanFrameResources };
@@ -20,7 +20,7 @@ use std::sync::Arc;
  * the same vec
  */
 enum InstructionPacket {
-    DrawIndexed(DrawIndexedPacket),
+    Draw(DrawPacket),
 }
 
 /*
@@ -70,11 +70,11 @@ impl VulkanDrawCommandBuffer {
     }
 }
 
-fn push_draw_indexed(
+fn push_draw(
     device: Arc<VulkanDevice>,
     resources: Arc<VulkanFrameResources>,
     command_buffer: vk::CommandBuffer,
-    packet: DrawIndexedPacket
+    packet: DrawPacket
 ) -> Result<(), CommandBufferError> {
     let descriptor_set = resources.get_descriptor_set().map_err(|err| {
         println!("Error getting model buffer pointer {:?}", err);
@@ -107,7 +107,7 @@ fn push_draw_indexed(
             pipeline_layout,
             0,
             &[ descriptor_set ],
-            &[ packet.uniform_index as u32 * size_of::<UniformBufferObject>() as u32 ]
+            &[ packet.model_uniform_index as u32 * size_of::<UniformBufferObject>() as u32 ]
         );
     }
 
@@ -119,12 +119,12 @@ fn push_draw_indexed(
 }
 
 impl CommandBuffer for VulkanDrawCommandBuffer {
-    fn draw_indexed(&mut self, packet: DrawIndexedPacket) -> Result<(), CommandBufferError> {
+    fn draw(&mut self, packet: DrawPacket) -> Result<(), CommandBufferError> {
         if self.invalidated {
             return Err(CommandBufferError);
         }
 
-        self.buffer.push(InstructionPacket::DrawIndexed(packet));
+        self.buffer.push(InstructionPacket::Draw(packet));
 
         Ok(())
     }
@@ -189,7 +189,7 @@ impl CommandBuffer for VulkanDrawCommandBuffer {
 
         for packet in elements {
             match packet {
-                InstructionPacket::DrawIndexed(packet) => push_draw_indexed(self.device.clone(), self.resources.clone(), self.command_buffer, packet)?
+                InstructionPacket::Draw(packet) => push_draw(self.device.clone(), self.resources.clone(), self.command_buffer, packet)?
             }
         }
 

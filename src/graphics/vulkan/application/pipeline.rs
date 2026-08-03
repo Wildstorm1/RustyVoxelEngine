@@ -100,7 +100,9 @@ impl VulkanPipeline {
         swap_chain: Arc<VulkanSwapchain>,
         render_pass: Arc<VulkanRenderPass>
     ) -> Result<Self, PipelineError> {
+        println!("Loading shaders...");
         let shaders = load_shaders(device.clone())?;
+        println!("Shaders loaded!");
 
         let range = vk::PushConstantRange {
             stage_flags: vk::ShaderStageFlags::MESH_EXT,

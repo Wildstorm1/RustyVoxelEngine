@@ -102,7 +102,7 @@ fn main() {
                 },
                 Event::MouseMotion { x, y, xrel, yrel, .. } => {
                     // Skip resetting the mouse to screen center
-                    if x != extent.width as f32 / 2.0 && y != extent.height as f32 / 2.0 {
+                    if x != extent.width as f32 / 2.0 || y != extent.height as f32 / 2.0 {
                         dx_mov = dx_mov + xrel;
                         dy_mov = dy_mov + yrel;
                         println!("Frame {} - {} {}", frame_num, x, y);

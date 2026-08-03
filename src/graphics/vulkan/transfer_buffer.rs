@@ -3,7 +3,7 @@
  */
 
 use super::super::hal::command_buffer::{
-    CommandBuffer, CommandBufferError, DrawIndexedPacket, CopyBufferPacket
+    CommandBuffer, CommandBufferError, DrawPacket, CopyBufferPacket
 };
 use super::frame_resources::{ VulkanFrameResources };
 use super::hardware::swapchain::{ VulkanSwapchain };
@@ -92,7 +92,7 @@ fn push_copy_buffer(
 }
 
 impl CommandBuffer for VulkanTransferCommandBuffer {
-    fn draw_indexed(&mut self, packet: DrawIndexedPacket) -> Result<(), CommandBufferError> {
+    fn draw(&mut self, packet: DrawPacket) -> Result<(), CommandBufferError> {
         Err(CommandBufferError)
     }
 
