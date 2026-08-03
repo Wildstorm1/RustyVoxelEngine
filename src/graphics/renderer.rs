@@ -335,6 +335,22 @@ impl <T: Context> Renderer<T> {
             }
         };
 
+        match draw_command_buffer.draw_indexed(DrawIndexedPacket {
+            vertex: vertex_gpu_buffer,
+            index: index_gpu_buffer,
+            camera: camera,
+            uniform_index: 1,
+            vertex_offset: 0,
+            index_offset: 0,
+            indices_count: index_list.len() as u32,
+        }) {
+            Ok(result) => result,
+            Err(err) => {
+                println!("Error recording command buffer {:?}", err);
+                return Err(RendererError);
+            }
+        };
+
         draw_command_buffer.stage().map_err(|err| {
             println!("Error staging draw command buffer {:?}", err);
             RendererError
