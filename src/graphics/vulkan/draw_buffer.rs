@@ -107,7 +107,9 @@ fn push_draw(
             pipeline_layout,
             0,
             &[ descriptor_set ],
-            &[ packet.model_uniform_index as u32 * size_of::<UniformBufferObject>() as u32 ]
+            &[
+                packet.model_uniform_index as u32 * size_of::<UniformBufferObject>() as u32,
+            ]
         );
     }
 

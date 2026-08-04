@@ -217,17 +217,25 @@ fn create_descriptor_set_resources(
     vk::DescriptorSetLayout,
     Vec<vk::DescriptorSet>
 ), DeviceInitError> {
-    let descriptor_pool_size = vk::DescriptorPoolSize {
+    let model_descriptor_pool_size = vk::DescriptorPoolSize {
         ty: vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
-        descriptor_count: 2, // TODO: 1 per frame in flight magic number
+        descriptor_count: 1,
         ..Default::default()
     };
 
+    let voxels_descriptor_pool_size = vk::DescriptorPoolSize {
+        ty: vk::DescriptorType::STORAGE_BUFFER,
+        descriptor_count: 1,
+        ..Default::default()
+    };
+
+    let pool_sizes = [ model_descriptor_pool_size, voxels_descriptor_pool_size ];
+
     let descriptor_pool_create_info = vk::DescriptorPoolCreateInfo {
-        pool_size_count: 1,
-        p_pool_sizes: &descriptor_pool_size,
+        pool_size_count: 2,
+        p_pool_sizes: pool_sizes.as_ptr(),
         flags: vk::DescriptorPoolCreateFlags::UPDATE_AFTER_BIND,
-        max_sets: 2, // TODO: 1 per frame in flight magic number
+        max_sets: 1,
         ..Default::default()
     };
 
@@ -239,11 +247,14 @@ fn create_descriptor_set_resources(
         }
     };
 
-    let flags = [ vk::DescriptorBindingFlags::PARTIALLY_BOUND ];
+    let flags = [
+        vk::DescriptorBindingFlags::PARTIALLY_BOUND,
+        vk::DescriptorBindingFlags::PARTIALLY_BOUND
+    ];
 
     let binding_flags = vk::DescriptorSetLayoutBindingFlagsCreateInfo {
         p_binding_flags: flags.as_ptr(),
-        binding_count: 1,
+        binding_count: 2,
         ..Default::default()
     };
 
@@ -255,10 +266,20 @@ fn create_descriptor_set_resources(
         ..Default::default()
     };
 
+    let voxel_layout_binding = vk::DescriptorSetLayoutBinding {
+        binding: 1,
+        descriptor_type: vk::DescriptorType::STORAGE_BUFFER,
+        descriptor_count: 1,
+        stage_flags: vk::ShaderStageFlags::MESH_EXT,
+        ..Default::default()
+    };
+
+    let bindings = [ ubo_layout_binding, voxel_layout_binding ];
+
     let layout_info = vk::DescriptorSetLayoutCreateInfo {
-        binding_count: 1,
+        binding_count: 2,
         flags: vk::DescriptorSetLayoutCreateFlags::UPDATE_AFTER_BIND_POOL,
-        p_bindings: &ubo_layout_binding,
+        p_bindings: bindings.as_ptr(),
         p_next: (&raw const binding_flags) as *const c_void,
         ..Default::default()
     };
@@ -271,11 +292,11 @@ fn create_descriptor_set_resources(
         }
     };
 
-    let layouts = [ descriptor_set_layout, descriptor_set_layout ];
+    let layouts = [ descriptor_set_layout ];
 
     let dset_alloc_info = vk::DescriptorSetAllocateInfo {
         descriptor_pool: descriptor_pool,
-        descriptor_set_count: 2, // TODO: 1 per frame in flight magic number
+        descriptor_set_count: 1,
         p_set_layouts: layouts.as_ptr(),
         ..Default::default()
     };

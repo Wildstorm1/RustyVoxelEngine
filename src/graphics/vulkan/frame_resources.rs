@@ -61,7 +61,7 @@ impl Resources for VulkanFrameResources {
     }
 
     unsafe fn buffer_voxel_data_cpu_side(&self, args: WriteVoxelBuffer) -> Result<(), ResourcesError> {
-        let voxel_buffer_start = self.resources.get_vulkan_uniform_pointer(UniformHandles::VoxelsCPU)? as *mut Voxel;
+        let voxel_buffer_start = self.resources.get_vulkan_buffer_pointer(BufferHandles::VoxelsCPU)? as *mut Voxel;
         let vertex_slot = unsafe { voxel_buffer_start.add(args.offset) };
 
         unsafe { std::ptr::copy_nonoverlapping(args.voxels.as_ptr(), vertex_slot, args.voxels.len()) };
@@ -70,14 +70,7 @@ impl Resources for VulkanFrameResources {
     }
 
     unsafe fn buffer_model_data_cpu_side(&self, args: WriteModelBuffer) -> Result<(), ResourcesError> {
-        let uniform_buffer_start;
-
-        if self.frame_number == 0 {
-            uniform_buffer_start = self.resources.get_vulkan_uniform_pointer(UniformHandles::ModelsFrame1CPU)? as *mut UniformBufferObject;
-        } else {
-            uniform_buffer_start = self.resources.get_vulkan_uniform_pointer(UniformHandles::ModelsFrame2CPU)? as *mut UniformBufferObject;
-        }
-
+        let uniform_buffer_start= self.resources.get_vulkan_uniform_pointer(UniformHandles::ModelsCPU)? as *mut UniformBufferObject;
         let uniform_slot = unsafe { uniform_buffer_start.add(args.offset) };
 
         unsafe { *uniform_slot = args.model };
@@ -96,7 +89,7 @@ impl VulkanFrameResources {
     }
 
     pub fn get_descriptor_set(&self) -> Result<vk::DescriptorSet, ResourcesError> {
-        Ok(self.device.descriptor_sets[self.frame_number])
+        Ok(self.device.descriptor_sets[0])
     }
 
     pub fn get_frame_buffer(&self) -> vk::Framebuffer {

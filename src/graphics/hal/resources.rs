@@ -10,10 +10,8 @@ use std::fmt;
  */
 #[derive(Hash, PartialEq, Eq, Debug)]
 pub enum BufferHandles {
-    VertexCPU,
-    VertexGPU,
-    IndexCPU,
-    IndexGPU
+    VoxelsCPU,
+    VoxelsGPU
 }
 
 /*
@@ -21,10 +19,7 @@ pub enum BufferHandles {
  */
 #[derive(Hash, PartialEq, Eq, Debug)]
 pub enum UniformHandles {
-    VoxelsCPU,
-    VoxelsGPU,
-    ModelsFrame1CPU,
-    ModelsFrame2CPU,
+    ModelsCPU,
 }
 
 /*

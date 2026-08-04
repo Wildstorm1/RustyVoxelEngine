@@ -7,7 +7,8 @@ use glm::{ Matrix4 };
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct Voxel {
-    pub data: u64,
+    pub metadata: u32,
+    pub data: u32
 }
 
 #[derive(Clone, Copy)]

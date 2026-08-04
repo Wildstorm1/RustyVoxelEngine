@@ -5,7 +5,7 @@
 use super::super::super::hal::resources::{
     ResourcesError, Buffer, Uniform, BufferHandles, UniformHandles
 };
-use super::super::super::hal::stucts::{ UniformBufferObject };
+use super::super::super::hal::stucts::{ UniformBufferObject, Voxel };
 use super::super::hardware::device::{ VulkanDevice };
 use std::collections::HashMap;
 use std::ffi::{ c_void };
@@ -175,48 +175,59 @@ fn bind_uniform_to_descriptor_set(
     unsafe { device.device.update_descriptor_sets(&[ descriptor_write ], &[]) };
 }
 
+fn bind_buffer_to_descriptor_set(
+    device: &VulkanDevice,
+    descriptor_set: vk::DescriptorSet,
+    buffer: vk::Buffer
+) {
+    let buffer_info = vk::DescriptorBufferInfo {
+        buffer: buffer,
+        offset: 0,
+        range: 2500000000, //std::mem::size_of::<Voxel>() as u64 * 16 * 16 * 16, // TODO: Chunk size
+        ..Default::default()
+    };
+
+    let descriptor_write = vk::WriteDescriptorSet {
+        dst_set: descriptor_set,
+        dst_binding: 1,
+        dst_array_element: 0,
+        descriptor_type: vk::DescriptorType::STORAGE_BUFFER,
+        descriptor_count: 1,
+        p_buffer_info: &buffer_info,
+        ..Default::default()
+    };
+
+    unsafe { device.device.update_descriptor_sets(&[ descriptor_write ], &[]) };
+}
+
 impl VulkanResources {
     pub fn new(device: Arc<VulkanDevice>) -> Result<Self, ResourcesError> {
-        let vertex_buffer = create_staged_buffer(&device, vk::BufferUsageFlags::VERTEX_BUFFER, 2500000000)?;
-        let index_buffer = create_staged_buffer(&device, vk::BufferUsageFlags::INDEX_BUFFER, 2500000000)?;
+        let voxel_buffer = create_staged_buffer(&device, vk::BufferUsageFlags::STORAGE_BUFFER, 2500000000)?;
+        bind_buffer_to_descriptor_set(&device, device.descriptor_sets[0], voxel_buffer.0.buffer);
 
         let usage_flags = vk::BufferUsageFlags::UNIFORM_BUFFER;
         let properties = vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT;
-        let model_buffer_1 = create_mapped_buffer(&device, 2500000000, usage_flags, properties)?;
-        bind_uniform_to_descriptor_set(&device, device.descriptor_sets[0], model_buffer_1.buffer);
+        let model_buffer = create_mapped_buffer(&device, 2500000000, usage_flags, properties)?;
+        bind_uniform_to_descriptor_set(&device, device.descriptor_sets[0], model_buffer.buffer);
 
-        let usage_flags = vk::BufferUsageFlags::UNIFORM_BUFFER;
-        let properties = vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT;
-        let model_buffer_2 = create_mapped_buffer(&device, 2500000000, usage_flags, properties)?;
-        bind_uniform_to_descriptor_set(&device, device.descriptor_sets[1], model_buffer_2.buffer);
-
-        let vertex_handle = Buffer { handle: 0 }; // Vertex Buffer
-        let index_handle = Buffer { handle: 1 }; // Index Buffer
-        let vertex_staging_handle = Buffer { handle: 2 }; // Vertex Staging Buffer
-        let index_staging_handle = Buffer { handle: 3 }; // Index Staging Buffer
-        let frame_1_uniform_handle = Uniform { handle: 0 }; // Frame 1 Models
-        let frame_2_uniform_handle = Uniform { handle: 1 }; // Frame 2 Models
+        let voxel_handle = Buffer { handle: 0 }; // Voxel Buffer
+        let voxel_staging_handle = Buffer { handle: 1 }; // Voxel Staging Buffer
+        let model_uniform_handle = Uniform { handle: 0 }; // Models buffer
 
         let mut buffer_handles = HashMap::new();
         let mut staging_handles = HashMap::new();
         let mut uniform_handles = HashMap::new();
 
-        buffer_handles.insert(vertex_handle.clone(), vertex_buffer.0);
-        buffer_handles.insert(index_handle.clone(), index_buffer.0);
-        staging_handles.insert(vertex_staging_handle.clone(), vertex_buffer.1);
-        staging_handles.insert(index_staging_handle.clone(), index_buffer.1);
-        uniform_handles.insert(frame_1_uniform_handle.clone(), model_buffer_1);
-        uniform_handles.insert(frame_2_uniform_handle.clone(), model_buffer_2);
+        buffer_handles.insert(voxel_handle.clone(), voxel_buffer.0);
+        staging_handles.insert(voxel_staging_handle.clone(), voxel_buffer.1);
+        uniform_handles.insert(model_uniform_handle.clone(), model_buffer);
 
         let mut buffer_mappings = HashMap::new();
         let mut uniform_mappings = HashMap::new();
 
-        buffer_mappings.insert(BufferHandles::VertexCPU, vertex_staging_handle);
-        buffer_mappings.insert(BufferHandles::VertexGPU, vertex_handle);
-        buffer_mappings.insert(BufferHandles::IndexCPU, index_staging_handle);
-        buffer_mappings.insert(BufferHandles::IndexGPU, index_handle);
-        uniform_mappings.insert(UniformHandles::ModelsFrame1CPU, frame_1_uniform_handle);
-        uniform_mappings.insert(UniformHandles::ModelsFrame2CPU, frame_2_uniform_handle);
+        buffer_mappings.insert(BufferHandles::VoxelsCPU, voxel_staging_handle);
+        buffer_mappings.insert(BufferHandles::VoxelsGPU, voxel_handle);
+        uniform_mappings.insert(UniformHandles::ModelsCPU, model_uniform_handle);
 
         Ok(Self {
             device: device,

@@ -18,6 +18,15 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 model;
 } ubo;
 
+struct Voxel {
+    uint metadata;
+    uint data;
+};
+
+layout(set = 0, binding = 1) buffer VoxelData {
+    Voxel voxels[];
+} voxel_data;
+
 layout(push_constant) uniform Constants {
     mat4 view;
     mat4 proj;
