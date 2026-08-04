@@ -5,9 +5,9 @@
 use crate::graphics::hal::stucts::UniformBufferObject;
 
 use super::super::hal::resources::{
-    Resources, ResourcesError, Buffer, Uniform, WriteVertexBuffer, WriteIndexBuffer, WriteModelBuffer, BufferHandles, UniformHandles
+    Resources, ResourcesError, Buffer, Uniform, WriteVoxelBuffer, WriteModelBuffer, BufferHandles, UniformHandles
 };
-use super::super::hal::stucts::{ Vertex };
+use super::super::hal::stucts::{ Voxel };
 use super::application::pipeline::{ VulkanPipeline };
 use super::application::render_pass::{ VulkanRenderPass };
 use super::application::resources::{ VulkanResources };
@@ -60,20 +60,11 @@ impl Resources for VulkanFrameResources {
         self.resources.get_uniform_handle(label)
     }
 
-    unsafe fn buffer_vertex_data_cpu_side(&self, args: WriteVertexBuffer) -> Result<(), ResourcesError> {
-        let vertex_buffer_start = self.resources.get_vulkan_buffer_pointer(BufferHandles::VertexCPU)? as *mut Vertex;
-        let vertex_slot = unsafe { vertex_buffer_start.add(args.offset) };
+    unsafe fn buffer_voxel_data_cpu_side(&self, args: WriteVoxelBuffer) -> Result<(), ResourcesError> {
+        let voxel_buffer_start = self.resources.get_vulkan_uniform_pointer(UniformHandles::VoxelsCPU)? as *mut Voxel;
+        let vertex_slot = unsafe { voxel_buffer_start.add(args.offset) };
 
-        unsafe { std::ptr::copy_nonoverlapping(args.vertices.as_ptr(), vertex_slot, args.vertices.len()) };
-
-        Ok(())
-    }
-
-    unsafe fn buffer_index_data_cpu_side(&self, args: WriteIndexBuffer) -> Result<(), ResourcesError> {
-        let index_buffer_start = self.resources.get_vulkan_buffer_pointer(BufferHandles::IndexCPU)? as *mut u32;
-        let index_slot = unsafe { index_buffer_start.add(args.offset) };
-
-        unsafe { std::ptr::copy_nonoverlapping(args.indices.as_ptr(), index_slot, args.indices.len()) };
+        unsafe { std::ptr::copy_nonoverlapping(args.voxels.as_ptr(), vertex_slot, args.voxels.len()) };
 
         Ok(())
     }

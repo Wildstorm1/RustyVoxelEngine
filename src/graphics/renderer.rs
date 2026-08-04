@@ -4,10 +4,10 @@
 
 use crate::graphics::hal::command_buffer::{ CommandBuffer, CopyBufferPacket, DrawPacket };
 use crate::graphics::hal::context::{ Context, ImageExtent };
-use crate::graphics::hal::resources::{ Resources, WriteVertexBuffer, WriteIndexBuffer, WriteModelBuffer, BufferHandles };
+use crate::graphics::hal::resources::{ Resources, WriteModelBuffer, BufferHandles };
 use crate::graphics::hal::frame::{ Frame };
 use crate::graphics::hal::job::{ Job };
-use crate::graphics::hal::stucts::{ Vertex, UniformBufferObject, Camera };
+use crate::graphics::hal::stucts::{ UniformBufferObject, Camera };
 
 /*
  * Simple struct for rendering errors

@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use super::stucts::{ Vertex, UniformBufferObject };
+use super::stucts::{ Voxel, UniformBufferObject };
 use std::fmt;
 
 /*
@@ -21,6 +21,8 @@ pub enum BufferHandles {
  */
 #[derive(Hash, PartialEq, Eq, Debug)]
 pub enum UniformHandles {
+    VoxelsCPU,
+    VoxelsGPU,
     ModelsFrame1CPU,
     ModelsFrame2CPU,
 }
@@ -54,25 +56,14 @@ impl fmt::Display for Uniform {
 }
 
 /*
- * Arguments writing to the vertex buffer
+ * Arguments writing to the voxel buffer
  * 
- * offset: starting index of where to write vertex data to in Vertex units
- * vertices: list of vertices to copy
+ * offset: starting index of where to write voxel data to in Voxel units
+ * voxels: list of voxels to copy
  */
-pub struct WriteVertexBuffer<'a> {
+pub struct WriteVoxelBuffer<'a> {
     pub offset: usize,
-    pub vertices: &'a Vec<Vertex>,
-}
-
-/*
- * Arguments writing to the index buffer
- * 
- * offset: starting index of where to write index data to in u32 units
- * indices: list of indices to copy
- */
-pub struct WriteIndexBuffer<'a> {
-    pub offset: usize,
-    pub indices: &'a Vec<u32>,
+    pub voxels: &'a Vec<Voxel>,
 }
 
 /*
@@ -104,14 +95,9 @@ pub trait Resources {
     fn get_uniform_handle(&self, label: UniformHandles) -> Result<Uniform, ResourcesError>;
 
     /*
-     * Writes vertex data to the cpu side vertex buffer
+     * Writes voxel data to the cpu side voxel buffer
      */
-    unsafe fn buffer_vertex_data_cpu_side(&self, args: WriteVertexBuffer) -> Result<(), ResourcesError>;
-
-    /*
-     * Writes index data to the cpu side index buffer
-     */
-    unsafe fn buffer_index_data_cpu_side(&self, args: WriteIndexBuffer) -> Result<(), ResourcesError>;
+    unsafe fn buffer_voxel_data_cpu_side(&self, args: WriteVoxelBuffer) -> Result<(), ResourcesError>;
 
     /*
      * Writes model data to the cpu side model buffer

@@ -2,16 +2,15 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use super::super::super::hal::stucts::{ Vertex, Camera };
+use super::super::super::hal::stucts::{ Camera };
 use super::super::hardware::device::{ VulkanDevice };
 use super::super::hardware::swapchain::{ VulkanSwapchain };
 use super::render_pass::{ VulkanRenderPass };
 use std::ffi::{ CString };
 use std::fs::{ File };
 use std::path::{ Path };
-use std::ptr;
 use std::sync::{ Arc };
-use core::mem::{ offset_of };
+use std::ptr;
 use ash::{ vk, util };
 
 /*
