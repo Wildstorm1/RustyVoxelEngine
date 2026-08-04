@@ -3,6 +3,7 @@
  */
 
 use super::stucts::{ Voxel, UniformBufferObject };
+use super::super::super::voxels::{ Chunk };
 use std::fmt;
 
 /*
@@ -58,7 +59,7 @@ impl fmt::Display for Uniform {
  */
 pub struct WriteVoxelBuffer<'a> {
     pub offset: usize,
-    pub voxels: &'a Vec<Voxel>,
+    pub voxels: &'a Chunk,
 }
 
 /*

@@ -4,10 +4,12 @@
 
 use crate::graphics::hal::command_buffer::{ CommandBuffer, CopyBufferPacket, DrawPacket };
 use crate::graphics::hal::context::{ Context, ImageExtent };
-use crate::graphics::hal::resources::{ Resources, WriteModelBuffer, BufferHandles };
+use crate::graphics::hal::resources::{ BufferHandles, Resources, WriteModelBuffer, WriteVoxelBuffer };
 use crate::graphics::hal::frame::{ Frame };
 use crate::graphics::hal::job::{ Job };
-use crate::graphics::hal::stucts::{ UniformBufferObject, Camera };
+use crate::graphics::hal::stucts::{ UniformBufferObject, Camera, Voxel };
+use crate::voxels::{ Chunk };
+use std::sync::Arc;
 
 /*
  * Simple struct for rendering errors
@@ -30,7 +32,7 @@ impl <T: Context> Renderer<T> {
         self.context.image_extent().map_err(|_| { RendererError })
     }
 
-    pub fn render(&mut self, camera: Camera) -> Result<(), RendererError> {
+    pub fn render(&mut self, camera: Camera, chunk: Arc<Chunk>) -> Result<(), RendererError> {
         let frame = self.context.next_frame().map_err(|err| {
             println!("Error getting next frame {:?}", err);
             RendererError
@@ -93,6 +95,14 @@ impl <T: Context> Renderer<T> {
             RendererError
         }) }?;
 
+        unsafe { resources.buffer_voxel_data_cpu_side(WriteVoxelBuffer {
+            offset: 0,
+            voxels: &chunk
+        }).map_err(|err| {
+            println!("Error buffering chunk {:?}", err);
+            RendererError
+        }) }?;
+
         /*
          * Stage 2: Copy cpu to gpu (next frame?)
          */
@@ -107,7 +117,26 @@ impl <T: Context> Renderer<T> {
             RendererError
         })?;
 
-        // Copy
+        let voxel_buffer = resources.get_buffer_handle(BufferHandles::VoxelsCPU).map_err(|err| {
+            println!("Error getting voxel buffer {:?}", err);
+            RendererError
+        })?;
+
+        let voxel_gpu_buffer = resources.get_buffer_handle(BufferHandles::VoxelsGPU).map_err(|err| {
+            println!("Error getting voxel buffer {:?}", err);
+            RendererError
+        })?;
+
+        command_buffer.copy_buffer(CopyBufferPacket {
+            src: voxel_buffer,
+            dst: voxel_gpu_buffer,
+            src_offset: 0,
+            dst_offset: 0,
+            bytes: (chunk.len() * std::mem::size_of::<Voxel>()) as u64
+        }).map_err(|err| {
+            println!("Error submitting copy buffer command {:?}", err);
+            RendererError
+        })?;
 
         command_buffer.stage().map_err(|err| {
             println!("Error staging command buffer {:?}", err);

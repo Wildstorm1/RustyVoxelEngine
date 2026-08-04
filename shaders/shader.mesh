@@ -40,9 +40,15 @@ vec3 colors[4] = vec3[] (
 );
 
 void main() {
-    SetMeshOutputsEXT(24, 12);
+    uint index = gl_GlobalInvocationID.x * 16 * 16 + gl_GlobalInvocationID.y * 16 + gl_GlobalInvocationID.z;
 
-    uint index = gl_GlobalInvocationID.x;
+    if (voxel_data.voxels[index].data > 0) {
+        SetMeshOutputsEXT(24, 12);
+    } else {
+        SetMeshOutputsEXT(0, 0);
+        return;
+    }
+    
 
     mat4 pvm_matrix = camera.proj * camera.view * ubo.model * mat4(
         1.0, 0.0, 0.0, 0.0,

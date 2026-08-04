@@ -3,15 +3,19 @@
  */
 
 use crate::graphics::renderer::{ Renderer };
-use crate::graphics::{ Context, VulkanContext, Camera };
+use crate::graphics::{ Camera, Context, Voxel, VulkanContext };
+use crate::voxels::{ Chunk };
 
 use sdl3::{pixels::Color, video::WindowFlags};
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use ash::{vk, Entry};
+use noise::{NoiseFn, Perlin, Seedable};
 
 mod graphics;
+mod voxels;
 
 fn main() {
     let sdl_context = sdl3::init().map_err(|e| e.to_string()).unwrap();
@@ -48,6 +52,26 @@ fn main() {
 
     let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string()).unwrap();
     let mut frame_num = 0;
+
+    let perlin = Perlin::new(1);
+    let mut chunk = Chunk::new();
+
+    for x in 0..16 {
+        for y in 0..16 {
+            for z in 0..16 {
+                let value = perlin.get([x as f64 / 16.0f64, y as f64 / 16.0f64, z as f64 / 16.0f64]);
+
+                if value > 0.0 {
+                    chunk.set_voxel(x, y, z, Voxel {
+                        metadata: 0,
+                        data: 1,
+                    });
+                }
+            }
+        }
+    }
+
+    let chunk = Arc::new(chunk);
 
     'running: loop {
         let start_time = Instant::now();
@@ -148,7 +172,7 @@ fn main() {
 
         camera.proj[1][1] *= -1.0f32;
 
-        match renderer.render(camera) {
+        match renderer.render(camera, chunk.clone()) {
             Ok(_) => (),
             Err(err) => {
                 println!("Error rendering in main loop {:?}", err);
