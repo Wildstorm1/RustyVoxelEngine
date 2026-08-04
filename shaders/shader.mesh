@@ -39,7 +39,7 @@ void main() {
         1.0, 0.0, 0.0, 0.0,
         0.0, 1.0, 0.0, 0.0,
         0.0, 0.0, 1.0, 0.0,
-        index, 0.0, 0.0, 1.0
+        gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, gl_GlobalInvocationID.z, 1.0
     );
 
     // Right face
