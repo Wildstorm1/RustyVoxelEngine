@@ -44,10 +44,10 @@ fn main() {
 
     let mut dx_mov = 0.0f32;
     let mut dy_mov = 0.0f32;
-    let mut yaw = 4.712f32; // 3 * pi / 2
-    let mut pitch = 0.0f32;
-    let mut camera_pos = glm::vec3(0.0f32, 0.0f32, 3.0f32);
-    let mut camera_front = glm::vec3(0.0f32, 0.0f32, -1.0f32);
+    let mut yaw = 2.3220053f32; //4.712f32; // 3 * pi / 2
+    let mut pitch = -0.7900002f32;
+    let mut camera_pos = glm::vec3(84.0f32, 108.0f32, 68.0f32);
+    let mut camera_front = glm::vec3(-0.5680655f32, -0.77073944f32, -0.28855217f32);
     let mut camera_up = glm::vec3(0.0f32, 1.0f32, 0.0f32);
 
     let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string()).unwrap();
@@ -58,9 +58,9 @@ fn main() {
     let mut chunks = Vec::new();
     let mut ubos = Vec::new();
 
-    for cx in 0..50 {
-        for cy in 0..5 {
-            for cz in 0..50 {
+    for cy in 0..5 {
+        for cz in 0..10 {
+            for cx in 0..10 {
                 let mut chunk = Chunk::new();
 
                 for x in 0..16 {
@@ -82,7 +82,7 @@ fn main() {
                     }
                 }
 
-                chunks.push(chunk);
+                chunks.push(Some(chunk));
 
                 ubos.push(UniformBufferObject {
                     model: glm::ext::translate(
@@ -99,8 +99,33 @@ fn main() {
         }
     }
 
-    let chunks = Arc::new(chunks);
-    let ubos = Arc::new(ubos);
+    let mut filled_chunks = Vec::new();
+    let mut filled_ubos = Vec::new();
+
+    for cy in 1..4 {
+        for cz in 1..9 {
+            for cx in 1..9 {
+                let mut chunk = std::mem::replace(&mut chunks[cy * 10 * 10 + cx * 10 + cz], None);
+                let mut chunk = chunk.unwrap();
+                let ubo = ubos[cy * 10 * 10 + cx * 10 + cz];
+
+                /*
+                for x in 0..16 {
+                    for y in 0..16 {
+                        for z in 0..16 {
+                        }
+                    }
+                }
+                */
+
+                filled_chunks.push(chunk);
+                filled_ubos.push(ubo);
+            }
+        }
+    }
+
+    let chunks = Arc::new(filled_chunks);
+    let ubos = Arc::new(filled_ubos);
 
     println!("Chunks created!");
 
