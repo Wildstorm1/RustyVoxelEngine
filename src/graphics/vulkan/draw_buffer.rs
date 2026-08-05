@@ -5,7 +5,7 @@
 use super::super::hal::command_buffer::{
     CommandBuffer, CommandBufferError, DrawPacket, CopyBufferPacket
 };
-use super::super::hal::stucts::{ Camera, UniformBufferObject };
+use super::super::hal::stucts::{ Camera, UniformBufferObject, Voxel };
 use super::frame_resources::{ VulkanFrameResources };
 use super::hardware::swapchain::{ VulkanSwapchain };
 use super::hardware::device::{ VulkanDevice };
@@ -101,6 +101,7 @@ fn push_draw(
     }
 
     unsafe {
+        // TODO: Hardcoded chunk size
         device.device.cmd_bind_descriptor_sets(
             command_buffer,
             vk::PipelineBindPoint::GRAPHICS,
@@ -109,6 +110,7 @@ fn push_draw(
             &[ descriptor_set ],
             &[
                 packet.model_uniform_index as u32 * size_of::<UniformBufferObject>() as u32,
+                packet.chunk_index as u32 * 16 * 16 * 16 * size_of::<Voxel>() as u32
             ]
         );
     }

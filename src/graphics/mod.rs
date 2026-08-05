@@ -8,4 +8,4 @@ pub mod renderer;
 
 pub use vulkan::context::{ VulkanContext };
 pub use hal::context::{ Context };
-pub use hal::stucts::{ Camera, Voxel };
+pub use hal::stucts::{ Camera, Voxel, UniformBufferObject };

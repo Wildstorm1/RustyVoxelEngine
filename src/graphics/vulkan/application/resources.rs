@@ -180,10 +180,11 @@ fn bind_buffer_to_descriptor_set(
     descriptor_set: vk::DescriptorSet,
     buffer: vk::Buffer
 ) {
+    // TODO: Chunk size
     let buffer_info = vk::DescriptorBufferInfo {
         buffer: buffer,
         offset: 0,
-        range: 2500000000, //std::mem::size_of::<Voxel>() as u64 * 16 * 16 * 16, // TODO: Chunk size
+        range: std::mem::size_of::<Voxel>() as u64 * 16 * 16 * 16,
         ..Default::default()
     };
 
@@ -191,7 +192,7 @@ fn bind_buffer_to_descriptor_set(
         dst_set: descriptor_set,
         dst_binding: 1,
         dst_array_element: 0,
-        descriptor_type: vk::DescriptorType::STORAGE_BUFFER,
+        descriptor_type: vk::DescriptorType::STORAGE_BUFFER_DYNAMIC,
         descriptor_count: 1,
         p_buffer_info: &buffer_info,
         ..Default::default()

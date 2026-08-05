@@ -32,7 +32,7 @@ impl <T: Context> Renderer<T> {
         self.context.image_extent().map_err(|_| { RendererError })
     }
 
-    pub fn render(&mut self, camera: Camera, chunk: Arc<Chunk>) -> Result<(), RendererError> {
+    pub fn render(&mut self, camera: Camera, chunks: Arc<Vec<Chunk>>, ubos: Arc<Vec<UniformBufferObject>>) -> Result<(), RendererError> {
         let frame = self.context.next_frame().map_err(|err| {
             println!("Error getting next frame {:?}", err);
             RendererError
@@ -58,50 +58,19 @@ impl <T: Context> Renderer<T> {
             RendererError
         })?;
 
-        let model_matrix = UniformBufferObject {
-            model: glm::mat4(
-                1.0f32, 0.0f32, 0.0f32, 0.0f32,
-                0.0f32, 1.0f32, 0.0f32, 0.0f32,
-                0.0f32, 0.0f32, 1.0f32, 0.0f32,
-                0.0f32, 0.0f32, 0.0f32, 1.0f32
-            )
-        };
+        ubos.iter().enumerate().for_each(|(i, ubo)| {
+            unsafe { resources.buffer_model_data_cpu_side(WriteModelBuffer {
+                offset: i,
+                model: *ubo
+            }).unwrap()};
+        });
 
-        unsafe { resources.buffer_model_data_cpu_side(WriteModelBuffer {
-            offset: 0,
-            model: model_matrix
-        }).map_err(|err| {
-            println!("Error buffering model {:?}", err);
-            RendererError
-        }) }?;
-
-        let model_matrix = UniformBufferObject {
-            model: glm::ext::translate(
-                &glm::mat4(
-                    1.0f32, 0.0f32, 0.0f32, 0.0f32,
-                    0.0f32, 1.0f32, 0.0f32, 0.0f32,
-                    0.0f32, 0.0f32, 1.0f32, 0.0f32,
-                    0.0f32, 0.0f32, 0.0f32, 1.0f32
-                ),
-                glm::vec3(2.0f32, 0.0f32, 0.0f32)
-            )
-        };
-
-        unsafe { resources.buffer_model_data_cpu_side(WriteModelBuffer {
-            offset: 1,
-            model: model_matrix
-        }).map_err(|err| {
-            println!("Error buffering model {:?}", err);
-            RendererError
-        }) }?;
-
-        unsafe { resources.buffer_voxel_data_cpu_side(WriteVoxelBuffer {
-            offset: 0,
-            voxels: &chunk
-        }).map_err(|err| {
-            println!("Error buffering chunk {:?}", err);
-            RendererError
-        }) }?;
+        chunks.iter().enumerate().for_each(|(i, chunk)| {
+            unsafe { resources.buffer_voxel_data_cpu_side(WriteVoxelBuffer {
+                offset: i,
+                voxels: chunk
+            }).unwrap()};
+        });
 
         /*
          * Stage 2: Copy cpu to gpu (next frame?)
@@ -132,7 +101,7 @@ impl <T: Context> Renderer<T> {
             dst: voxel_gpu_buffer,
             src_offset: 0,
             dst_offset: 0,
-            bytes: (chunk.len() * std::mem::size_of::<Voxel>()) as u64
+            bytes: (chunks.len() * 16 * 16 * 16 * std::mem::size_of::<Voxel>()) as u64
         }).map_err(|err| {
             println!("Error submitting copy buffer command {:?}", err);
             RendererError
@@ -182,29 +151,13 @@ impl <T: Context> Renderer<T> {
             RendererError
         })?;
 
-        match draw_command_buffer.draw(DrawPacket {
-            camera: camera,
-            model_uniform_index: 0,
-        }) {
-            Ok(result) => result,
-            Err(err) => {
-                println!("Error recording command buffer {:?}", err);
-                return Err(RendererError);
-            }
-        };
-
-        /*
-        match draw_command_buffer.draw(DrawPacket {
-            camera: camera,
-            model_uniform_index: 1,
-        }) {
-            Ok(result) => result,
-            Err(err) => {
-                println!("Error recording command buffer {:?}", err);
-                return Err(RendererError);
-            }
-        };
-        */
+        chunks.iter().enumerate().for_each(|(i, _)| {
+            draw_command_buffer.draw(DrawPacket {
+                camera: camera,
+                model_uniform_index: i as u64,
+                chunk_index: i as u64,
+            }).unwrap();
+        });
 
         draw_command_buffer.stage().map_err(|err| {
             println!("Error staging draw command buffer {:?}", err);

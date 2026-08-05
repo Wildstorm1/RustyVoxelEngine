@@ -224,7 +224,7 @@ fn create_descriptor_set_resources(
     };
 
     let voxels_descriptor_pool_size = vk::DescriptorPoolSize {
-        ty: vk::DescriptorType::STORAGE_BUFFER,
+        ty: vk::DescriptorType::STORAGE_BUFFER_DYNAMIC,
         descriptor_count: 1,
         ..Default::default()
     };
@@ -268,7 +268,7 @@ fn create_descriptor_set_resources(
 
     let voxel_layout_binding = vk::DescriptorSetLayoutBinding {
         binding: 1,
-        descriptor_type: vk::DescriptorType::STORAGE_BUFFER,
+        descriptor_type: vk::DescriptorType::STORAGE_BUFFER_DYNAMIC,
         descriptor_count: 1,
         stage_flags: vk::ShaderStageFlags::MESH_EXT,
         ..Default::default()

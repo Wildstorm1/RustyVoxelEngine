@@ -3,7 +3,7 @@
  */
 
 use crate::graphics::renderer::{ Renderer };
-use crate::graphics::{ Camera, Context, Voxel, VulkanContext };
+use crate::graphics::{ Camera, Context, UniformBufferObject, Voxel, VulkanContext };
 use crate::voxels::{ Chunk };
 
 use sdl3::{pixels::Color, video::WindowFlags};
@@ -53,25 +53,56 @@ fn main() {
     let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string()).unwrap();
     let mut frame_num = 0;
 
+    println!("Creating chunks...");
     let perlin = Perlin::new(1);
-    let mut chunk = Chunk::new();
+    let mut chunks = Vec::new();
+    let mut ubos = Vec::new();
 
-    for x in 0..16 {
-        for y in 0..16 {
-            for z in 0..16 {
-                let value = perlin.get([x as f64 / 16.0f64, y as f64 / 16.0f64, z as f64 / 16.0f64]);
+    for cx in 0..10 {
+        for cy in 0..5 {
+            for cz in 0..10 {
+                let mut chunk = Chunk::new();
 
-                if value > 0.0 {
-                    chunk.set_voxel(x, y, z, Voxel {
-                        metadata: 0,
-                        data: 1,
-                    });
+                for x in 0..16 {
+                    for y in 0..16 {
+                        for z in 0..16 {
+                            let value = perlin.get([
+                                (cx * 16 + x) as f64 / 16.0f64,
+                                (cy * 16 + y) as f64 / 16.0f64,
+                                (cz * 16 + z) as f64 / 16.0f64
+                            ]);
+
+                            if value > 0.0 {
+                                chunk.set_voxel(x, y, z, Voxel {
+                                    metadata: 0,
+                                    data: 1,
+                                });
+                            }
+                        }
+                    }
                 }
+
+                chunks.push(chunk);
+
+                ubos.push(UniformBufferObject {
+                    model: glm::ext::translate(
+                        &glm::mat4(
+                            1.0f32, 0.0f32, 0.0f32, 0.0f32,
+                            0.0f32, 1.0f32, 0.0f32, 0.0f32,
+                            0.0f32, 0.0f32, 1.0f32, 0.0f32,
+                            0.0f32, 0.0f32, 0.0f32, 1.0f32
+                        ),
+                        glm::vec3((cx * 16) as f32, (cy * 16) as f32, (cz * 16) as f32)
+                    )
+                });
             }
         }
     }
 
-    let chunk = Arc::new(chunk);
+    let chunks = Arc::new(chunks);
+    let ubos = Arc::new(ubos);
+
+    println!("Chunks created!");
 
     'running: loop {
         let start_time = Instant::now();
@@ -172,7 +203,7 @@ fn main() {
 
         camera.proj[1][1] *= -1.0f32;
 
-        match renderer.render(camera, chunk.clone()) {
+        match renderer.render(camera, chunks.clone(), ubos.clone()) {
             Ok(_) => (),
             Err(err) => {
                 println!("Error rendering in main loop {:?}", err);
