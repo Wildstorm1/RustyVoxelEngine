@@ -58,9 +58,9 @@ fn main() {
     let mut chunks = Vec::new();
     let mut ubos = Vec::new();
 
-    for cx in 0..10 {
+    for cx in 0..50 {
         for cy in 0..5 {
-            for cz in 0..10 {
+            for cz in 0..50 {
                 let mut chunk = Chunk::new();
 
                 for x in 0..16 {
