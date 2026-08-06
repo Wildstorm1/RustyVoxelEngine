@@ -91,6 +91,7 @@ fn main() {
     let extent = renderer.extent().unwrap();
     sdl_context.mouse().warp_mouse_in_window(&window, extent.width as f32 / 2.0, extent.height as f32 / 2.0);
 
+    let mut center_mouse = true;
     let mut dx_mov = 0.0f32;
     let mut dy_mov = 0.0f32;
     let mut yaw = 2.3220053f32; //4.712f32; // 3 * pi / 2
@@ -308,6 +309,9 @@ fn main() {
                                 Keycode::D => {
                                     camera_pos = camera_pos + (glm::normalize(glm::cross(camera_front, camera_up)) * 0.2f32);
                                 },
+                                Keycode::E => {
+                                    center_mouse = !center_mouse;
+                                },
                                 _ => {}
                             }
                         },
@@ -316,7 +320,9 @@ fn main() {
                 },
                 Event::MouseMotion { x, y, xrel, yrel, .. } => {
                     // Skip resetting the mouse to screen center
-                    if x != extent.width as f32 / 2.0 || y != extent.height as f32 / 2.0 {
+                    let extent = renderer.extent().unwrap();
+
+                    if center_mouse && (x != extent.width as f32 / 2.0 || y != extent.height as f32 / 2.0) {
                         dx_mov = dx_mov + xrel;
                         dy_mov = dy_mov + yrel;
                         println!("Frame {} - {} {}", frame_num, x, y);
