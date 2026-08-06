@@ -2,6 +2,7 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
+use crate::{ ChunkCache, ChunkCoord };
 use crate::graphics::hal::command_buffer::{ CommandBuffer, CopyBufferPacket, DrawPacket };
 use crate::graphics::hal::context::{ Context, ImageExtent };
 use crate::graphics::hal::resources::{ BufferHandles, Resources, WriteModelBuffer, WriteVoxelBuffer };
@@ -32,7 +33,7 @@ impl <T: Context> Renderer<T> {
         self.context.image_extent().map_err(|_| { RendererError })
     }
 
-    pub fn render(&mut self, camera: Camera, chunks: Arc<Vec<Chunk>>, ubos: Arc<Vec<UniformBufferObject>>) -> Result<(), RendererError> {
+    pub fn render(&mut self, camera: Camera, chunks: &mut ChunkCache, coords: Arc<Vec<ChunkCoord>>) -> Result<(), RendererError> {
         let frame = self.context.next_frame().map_err(|err| {
             println!("Error getting next frame {:?}", err);
             RendererError
@@ -58,17 +59,15 @@ impl <T: Context> Renderer<T> {
             RendererError
         })?;
 
-        ubos.iter().enumerate().for_each(|(i, ubo)| {
-            unsafe { resources.buffer_model_data_cpu_side(WriteModelBuffer {
-                offset: i,
-                model: *ubo
-            }).unwrap()};
-        });
-
-        chunks.iter().enumerate().for_each(|(i, chunk)| {
+        coords.iter().enumerate().for_each(|(i, chunk)| {
             unsafe { resources.buffer_voxel_data_cpu_side(WriteVoxelBuffer {
                 offset: i,
-                voxels: chunk
+                voxels: chunks.get_chunk_mut(*chunk).unwrap()
+            }).unwrap()};
+
+            unsafe { resources.buffer_model_data_cpu_side(WriteModelBuffer {
+                offset: i,
+                model: *chunks.get_ubo(*chunk).unwrap()
             }).unwrap()};
         });
 
@@ -101,7 +100,7 @@ impl <T: Context> Renderer<T> {
             dst: voxel_gpu_buffer,
             src_offset: 0,
             dst_offset: 0,
-            bytes: (chunks.len() * 16 * 16 * 16 * std::mem::size_of::<Voxel>()) as u64
+            bytes: (coords.len() * 16 * 16 * 16 * std::mem::size_of::<Voxel>()) as u64
         }).map_err(|err| {
             println!("Error submitting copy buffer command {:?}", err);
             RendererError
@@ -151,7 +150,7 @@ impl <T: Context> Renderer<T> {
             RendererError
         })?;
 
-        chunks.iter().enumerate().for_each(|(i, _)| {
+        coords.iter().enumerate().for_each(|(i, _)| {
             draw_command_buffer.draw(DrawPacket {
                 camera: camera,
                 model_uniform_index: i as u64,

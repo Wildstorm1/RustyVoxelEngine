@@ -9,6 +9,7 @@ use crate::voxels::{ Chunk };
 use sdl3::{pixels::Color, video::WindowFlags};
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use ash::{vk, Entry};
@@ -16,6 +17,54 @@ use noise::{NoiseFn, Perlin, Seedable};
 
 mod graphics;
 mod voxels;
+
+#[derive(Hash, PartialEq, Eq, Debug, Copy, Clone)]
+pub struct ChunkCoord {
+    cx: usize,
+    cy: usize,
+    cz: usize,
+}
+
+impl ChunkCoord {
+    pub fn new(
+        cx: usize,
+        cy: usize,
+        cz: usize
+    ) -> Self {
+        Self {
+            cx: cx,
+            cy: cy,
+            cz: cz
+        }
+    }
+}
+
+pub struct ChunkCache {
+    buffer: HashMap<ChunkCoord, Chunk>,
+    ubos: HashMap<ChunkCoord, UniformBufferObject>,
+}
+
+impl ChunkCache {
+    pub fn new() -> Self {
+        Self {
+            buffer: HashMap::new(),
+            ubos: HashMap::new()
+        }
+    }
+
+    pub fn cache(&mut self, coord: ChunkCoord, chunk: Chunk, ubo: UniformBufferObject) {
+        self.buffer.insert(coord, chunk);
+        self.ubos.insert(coord, ubo);
+    }
+
+    pub fn get_chunk_mut(&mut self, coord: ChunkCoord) -> Option<&mut Chunk> {
+        self.buffer.get_mut(&coord)
+    }
+
+    pub fn get_ubo(&mut self, coord: ChunkCoord) -> Option<&UniformBufferObject> {
+        self.ubos.get(&coord)
+    }
+}
 
 fn main() {
     let sdl_context = sdl3::init().map_err(|e| e.to_string()).unwrap();
@@ -55,8 +104,8 @@ fn main() {
 
     println!("Creating chunks...");
     let perlin = Perlin::new(1);
-    let mut chunks = Vec::new();
-    let mut ubos = Vec::new();
+    let mut chunk_store = ChunkCache::new();
+    let mut coords = Vec::new();
 
     for cy in 0..5 {
         for cz in 0..10 {
@@ -82,9 +131,7 @@ fn main() {
                     }
                 }
 
-                chunks.push(Some(chunk));
-
-                ubos.push(UniformBufferObject {
+                let model = UniformBufferObject {
                     model: glm::ext::translate(
                         &glm::mat4(
                             1.0f32, 0.0f32, 0.0f32, 0.0f32,
@@ -94,38 +141,125 @@ fn main() {
                         ),
                         glm::vec3((cx * 16) as f32, (cy * 16) as f32, (cz * 16) as f32)
                     )
-                });
+                };
+
+                chunk_store.cache(ChunkCoord::new(cx, cy, cz), chunk, model);
             }
         }
     }
-
-    let mut filled_chunks = Vec::new();
-    let mut filled_ubos = Vec::new();
 
     for cy in 1..4 {
         for cz in 1..9 {
             for cx in 1..9 {
-                let mut chunk = std::mem::replace(&mut chunks[cy * 10 * 10 + cx * 10 + cz], None);
-                let mut chunk = chunk.unwrap();
-                let ubo = ubos[cy * 10 * 10 + cx * 10 + cz];
+                let coordinate = ChunkCoord::new(cx, cy, cz);
+                coords.push(coordinate);
 
-                /*
                 for x in 0..16 {
                     for y in 0..16 {
                         for z in 0..16 {
+                            let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
+                            let mut voxel = chunk.get_voxel(x, y, z);
+
+                            // Right face: +z
+                            if z < 15 {
+                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
+
+                                if chunk.get_voxel(x, y, z + 1).data != 0 {
+                                    voxel.metadata |= 0x10000000;
+                                }
+                            } else {
+                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx, cy, cz + 1)).unwrap();
+
+                                if neighbor_chunk.get_voxel(x, y, 0).data != 0 {
+                                    voxel.metadata |= 0x10000000;
+                                }
+                            }
+
+                            // Left face: -z
+                            if z > 0 {
+                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
+
+                                if chunk.get_voxel(x, y, z - 1).data != 0 {
+                                    voxel.metadata |= 0x20000000;
+                                }
+                            } else {
+                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx, cy, cz - 1)).unwrap();
+
+                                if neighbor_chunk.get_voxel(x, y, 15).data != 0 {
+                                    voxel.metadata |= 0x20000000;
+                                }
+                            }
+
+                            // Front face: +x
+                            if x < 15 {
+                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
+
+                                if chunk.get_voxel(x + 1, y, z).data != 0 {
+                                    voxel.metadata |= 0x80000000;
+                                }
+                            } else {
+                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx + 1, cy, cz)).unwrap();
+
+                                if neighbor_chunk.get_voxel(0, y, z).data != 0 {
+                                    voxel.metadata |= 0x80000000;
+                                }
+                            }
+
+                            // Back face: -x
+                            if x > 0 {
+                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
+
+                                if chunk.get_voxel(x - 1, y, z).data != 0 {
+                                    voxel.metadata |= 0x40000000;
+                                }
+                            } else {
+                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx - 1, cy, cz)).unwrap();
+
+                                if neighbor_chunk.get_voxel(15, y, z).data != 0 {
+                                    voxel.metadata |= 0x40000000;
+                                }
+                            }
+
+                            // Top face: +y
+                            if y < 15 {
+                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
+
+                                if chunk.get_voxel(x, y + 1, z).data != 0 {
+                                    voxel.metadata |= 0x08000000;
+                                }
+                            } else {
+                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx, cy + 1, cz)).unwrap();
+
+                                if neighbor_chunk.get_voxel(x, 0, z).data != 0 {
+                                    voxel.metadata |= 0x08000000;
+                                }
+                            }
+
+                            // Bottom face: -y
+                            if y > 0 {
+                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
+
+                                if chunk.get_voxel(x, y - 1, z).data != 0 {
+                                    voxel.metadata |= 0x04000000;
+                                }
+                            } else {
+                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx, cy - 1, cz)).unwrap();
+
+                                if neighbor_chunk.get_voxel(x, 15, z).data != 0 {
+                                    voxel.metadata |= 0x04000000;
+                                }
+                            }
+
+                            let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
+                            chunk.set_voxel(x, y, z, voxel);
                         }
                     }
                 }
-                */
-
-                filled_chunks.push(chunk);
-                filled_ubos.push(ubo);
             }
         }
     }
 
-    let chunks = Arc::new(filled_chunks);
-    let ubos = Arc::new(filled_ubos);
+    let coords = Arc::new(coords);
 
     println!("Chunks created!");
 
@@ -228,7 +362,7 @@ fn main() {
 
         camera.proj[1][1] *= -1.0f32;
 
-        match renderer.render(camera, chunks.clone(), ubos.clone()) {
+        match renderer.render(camera, &mut chunk_store, coords.clone()) {
             Ok(_) => (),
             Err(err) => {
                 println!("Error rendering in main loop {:?}", err);
