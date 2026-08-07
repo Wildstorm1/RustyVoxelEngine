@@ -10,7 +10,7 @@ use bevy_ecs::resource::Resource;
 use bevy_ecs::schedule::Schedule;
 use bevy_ecs::world::World;
 use glm::Vector3;
-use sdl3::Sdl;
+use sdl3::{EventPump, Sdl};
 use sdl3::video::Window;
 use sdl3::{pixels::Color, video::WindowFlags};
 use sdl3::event::{Event, WindowEvent};
@@ -24,6 +24,16 @@ use noise::{NoiseFn, Perlin, Seedable};
 mod graphics;
 mod voxels;
 
+struct SdlContext {
+    context: Sdl,
+    window: Arc<Window>,
+    event_pump: EventPump,
+}
+
+struct RenderContext<T: Context> {
+    renderer: Renderer<T>
+}
+
 #[derive(Resource)]
 struct PlayerCamera {
     yaw: f32,
@@ -33,28 +43,43 @@ struct PlayerCamera {
     up: Vector3<f32>,
 }
 
-/*
-fn write_resource_system(mut resource: ResMut<MyResource>) {
-    assert_eq!(resource.value, 42);
-    resource.value = 0;
-    assert_eq!(resource.value, 0);
-}
-*/
-
 fn main() {
+    let mut world = World::new();
+
     let sdl_context = sdl3::init().map_err(|e| e.to_string()).unwrap();
+    let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string()).unwrap();
+
     let video_subsystem = sdl_context.video().map_err(|e| e.to_string()).unwrap();
     video_subsystem.vulkan_load_library_default().unwrap();
 
-    let window = video_subsystem
+    let window = Arc::new(video_subsystem
         .window("Settle And Survive", 800, 600)
         .position_centered()
         .set_flags(WindowFlags::VULKAN | WindowFlags::RESIZABLE)
         .build()
         .map_err(|e| e.to_string())
-        .unwrap();
+        .unwrap()
+    );
 
-    let mut world = World::new();
+    world.insert_non_send(SdlContext {
+        context: sdl_context,
+        window: window.clone(),
+        event_pump: event_pump
+    });
+
+    let context = match VulkanContext::new(window.clone()) {
+        Ok(context) => Box::new(context),
+        Err(err) => {
+            println!("Error setting up context {:?}", err);
+            return;
+        }
+    };
+
+    let mut renderer = Renderer::new(context);
+
+    world.insert_non_send(RenderContext {
+        renderer: renderer
+    });
 
     world.insert_resource(PlayerCamera {
         yaw: 2.3220053f32,
@@ -64,16 +89,20 @@ fn main() {
         up: glm::vec3(0.0f32, 1.0f32, 0.0f32)
     });
 
-    let mut render = Schedule::default();
+    let mut dt = Duration::new(0, 0);
 
-    let context = match VulkanContext::new(&window) {
-        Ok(context) => Box::new(context),
-        Err(err) => {
-            println!("Error setting up context {:?}", err);
-            return;
-        }
-    };
+    'running: loop {
+        let start_time = Instant::now();
 
+        println!("Main game loop, previous frame {:?} ", dt);
+
+        let end_time = Instant::now();
+        dt = end_time.duration_since(start_time);
+    }
+
+    //let mut render = Schedule::default();
+
+    /*
     let mut renderer = Renderer::new(context);
     let extent = renderer.extent().unwrap();
     sdl_context.mouse().warp_mouse_in_window(&window, extent.width as f32 / 2.0, extent.height as f32 / 2.0);
@@ -211,4 +240,5 @@ fn main() {
         let end_time = Instant::now();
         //println!("Frame generation time (ms): {:?}", end_time.duration_since(start_time));
     }
+    */
 }

@@ -5,6 +5,7 @@
 use super::instance::{VulkanInstance};
 use std::collections::{HashMap, HashSet};
 use std::ffi::{CStr, CString, c_void};
+use std::sync::{Arc};
 use ash::{vk, khr, ext, Device};
 use sdl3::video::Window;
 
@@ -313,7 +314,7 @@ fn create_descriptor_set_resources(
 }
 
 impl VulkanDevice {
-    pub unsafe fn new(window: &Window) -> Result<Self, DeviceInitError> {
+    pub unsafe fn new(window: Arc<Window>) -> Result<Self, DeviceInitError> {
         println!("Starting vulkan device setup");
 
         let extensions = vec![

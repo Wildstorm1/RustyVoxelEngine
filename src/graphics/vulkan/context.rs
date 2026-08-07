@@ -33,9 +33,9 @@ struct SwapchainViewContext {
 /*
  * Vulkan implementation of context
  */
-pub struct VulkanContext<'a> {
+pub struct VulkanContext {
     device: Arc<VulkanDevice>,
-    window: &'a Window,
+    window: Arc<Window>,
     swapchain: Option<Arc<VulkanSwapchain>>,
     resources: Arc<VulkanResources>,
     render_pass: Option<Arc<VulkanRenderPass>>,
@@ -46,9 +46,9 @@ pub struct VulkanContext<'a> {
     frame_number: usize,
 }
 
-impl <'a> VulkanContext<'a> {
-    pub fn new(window: &'a Window) -> Result<Self, ContextError> {
-        let device = unsafe { match VulkanDevice::new(&window) {
+impl VulkanContext {
+    pub fn new(window: Arc<Window>) -> Result<Self, ContextError> {
+        let device = unsafe { match VulkanDevice::new(window.clone()) {
             Ok(device) => Arc::new(device),
             Err(err) => {
                 println!("Error creating vulkan device {:?}", err);
@@ -64,7 +64,7 @@ impl <'a> VulkanContext<'a> {
             }
         };        
 
-        let swap_chain = unsafe { match VulkanSwapchain::new(device.clone(), &window) {
+        let swap_chain = unsafe { match VulkanSwapchain::new(device.clone(), window.clone()) {
             Ok(swap_chain) => Arc::new(swap_chain),
             Err(err) => {
                 println!("Error creating vulkan swapchain {:?}", err);
@@ -175,7 +175,7 @@ impl <'a> VulkanContext<'a> {
     }
 }
 
-impl <'a> Context for VulkanContext<'a> {
+impl Context for VulkanContext {
     type T = VulkanFrame;
 
     fn next_frame(&mut self) -> Result<Arc<Self::T>, ContextError> {
@@ -251,7 +251,7 @@ impl <'a> Context for VulkanContext<'a> {
             self.frames[i] = None;
         }
 
-        self.swapchain = unsafe { match VulkanSwapchain::new(self.device.clone(), self.window) {
+        self.swapchain = unsafe { match VulkanSwapchain::new(self.device.clone(), self.window.clone()) {
             Ok(swap_chain) => Some(Arc::new(swap_chain)),
             Err(err) => {
                 println!("Error creating vulkan swapchain {:?}", err);
@@ -279,7 +279,7 @@ impl <'a> Context for VulkanContext<'a> {
     }
 }
 
-impl <'a> Drop for VulkanContext<'a> {
+impl Drop for VulkanContext {
     fn drop(&mut self) {
         println!("Destroying context wrapper");
 

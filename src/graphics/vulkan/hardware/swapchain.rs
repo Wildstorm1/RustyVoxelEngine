@@ -81,7 +81,7 @@ fn choose_swap_extent(
     instance: &VulkanInstance,
     device_handle: vk::PhysicalDevice,
     surface: vk::SurfaceKHR,
-    window: &Window
+    window: Arc<Window>
 ) -> Result<vk::Extent2D, SwapchainInitError> {
     let capabilities = unsafe { match instance.surface.get_physical_device_surface_capabilities(device_handle, surface) {
         Ok(capabilities) => capabilities,
@@ -190,11 +190,11 @@ fn create_image_views(
 impl VulkanSwapchain {
     pub unsafe fn new(
         device: Arc<VulkanDevice>,
-        window: &Window
+        window: Arc<Window>
     ) -> Result<Self, SwapchainInitError> {
         let surface_format = choose_swap_surface_format(&device.instance, device.physical_device, device.surface)?;
         let present_mode = choose_swap_surface_present_mode(&device.instance, device.physical_device, device.surface)?;
-        let extent = choose_swap_extent(&device.instance, device.physical_device, device.surface, window)?;
+        let extent = choose_swap_extent(&device.instance, device.physical_device, device.surface, window.clone())?;
         let image_count = choose_image_count(&device.instance, device.physical_device, device.surface)?;
         let transform = choose_transform(&device.instance, device.physical_device, device.surface)?;
 
