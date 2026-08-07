@@ -4,13 +4,19 @@
 
 use crate::graphics::renderer::{ Renderer };
 use crate::graphics::{ Camera, Context, UniformBufferObject, Voxel, VulkanContext };
-use crate::voxels::{ Chunk };
+use crate::voxels::{ Chunk, ChunkCache, ChunkCoord, world_init };
 
+use bevy_ecs::resource::Resource;
+use bevy_ecs::schedule::Schedule;
+use bevy_ecs::world::World;
+use glm::Vector3;
+use sdl3::Sdl;
+use sdl3::video::Window;
 use sdl3::{pixels::Color, video::WindowFlags};
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use ash::{vk, Entry};
 use noise::{NoiseFn, Perlin, Seedable};
@@ -18,53 +24,22 @@ use noise::{NoiseFn, Perlin, Seedable};
 mod graphics;
 mod voxels;
 
-#[derive(Hash, PartialEq, Eq, Debug, Copy, Clone)]
-pub struct ChunkCoord {
-    cx: usize,
-    cy: usize,
-    cz: usize,
+#[derive(Resource)]
+struct PlayerCamera {
+    yaw: f32,
+    pitch: f32,
+    pos: Vector3<f32>,
+    front: Vector3<f32>,
+    up: Vector3<f32>,
 }
 
-impl ChunkCoord {
-    pub fn new(
-        cx: usize,
-        cy: usize,
-        cz: usize
-    ) -> Self {
-        Self {
-            cx: cx,
-            cy: cy,
-            cz: cz
-        }
-    }
+/*
+fn write_resource_system(mut resource: ResMut<MyResource>) {
+    assert_eq!(resource.value, 42);
+    resource.value = 0;
+    assert_eq!(resource.value, 0);
 }
-
-pub struct ChunkCache {
-    buffer: HashMap<ChunkCoord, Chunk>,
-    ubos: HashMap<ChunkCoord, UniformBufferObject>,
-}
-
-impl ChunkCache {
-    pub fn new() -> Self {
-        Self {
-            buffer: HashMap::new(),
-            ubos: HashMap::new()
-        }
-    }
-
-    pub fn cache(&mut self, coord: ChunkCoord, chunk: Chunk, ubo: UniformBufferObject) {
-        self.buffer.insert(coord, chunk);
-        self.ubos.insert(coord, ubo);
-    }
-
-    pub fn get_chunk_mut(&mut self, coord: ChunkCoord) -> Option<&mut Chunk> {
-        self.buffer.get_mut(&coord)
-    }
-
-    pub fn get_ubo(&mut self, coord: ChunkCoord) -> Option<&UniformBufferObject> {
-        self.ubos.get(&coord)
-    }
-}
+*/
 
 fn main() {
     let sdl_context = sdl3::init().map_err(|e| e.to_string()).unwrap();
@@ -78,6 +53,18 @@ fn main() {
         .build()
         .map_err(|e| e.to_string())
         .unwrap();
+
+    let mut world = World::new();
+
+    world.insert_resource(PlayerCamera {
+        yaw: 2.3220053f32,
+        pitch: -0.7900002f32,
+        pos: glm::vec3(84.0f32, 108.0f32, 68.0f32),
+        front: glm::vec3(-0.5680655f32, -0.77073944f32, -0.28855217f32),
+        up: glm::vec3(0.0f32, 1.0f32, 0.0f32)
+    });
+
+    let mut render = Schedule::default();
 
     let context = match VulkanContext::new(&window) {
         Ok(context) => Box::new(context),
@@ -104,164 +91,8 @@ fn main() {
     let mut frame_num = 0;
 
     println!("Creating chunks...");
-    let perlin = Perlin::new(1);
-    let mut chunk_store = ChunkCache::new();
-    let mut coords = Vec::new();
-
-    for cy in 0..5 {
-        for cz in 0..10 {
-            for cx in 0..10 {
-                let mut chunk = Chunk::new();
-
-                for x in 0..16 {
-                    for y in 0..16 {
-                        for z in 0..16 {
-                            let value = perlin.get([
-                                (cx * 16 + x) as f64 / 16.0f64,
-                                (cy * 16 + y) as f64 / 16.0f64,
-                                (cz * 16 + z) as f64 / 16.0f64
-                            ]);
-
-                            if value > 0.0 {
-                                chunk.set_voxel(x, y, z, Voxel {
-                                    metadata: 0,
-                                    data: 1,
-                                });
-                            }
-                        }
-                    }
-                }
-
-                let model = UniformBufferObject {
-                    model: glm::ext::translate(
-                        &glm::mat4(
-                            1.0f32, 0.0f32, 0.0f32, 0.0f32,
-                            0.0f32, 1.0f32, 0.0f32, 0.0f32,
-                            0.0f32, 0.0f32, 1.0f32, 0.0f32,
-                            0.0f32, 0.0f32, 0.0f32, 1.0f32
-                        ),
-                        glm::vec3((cx * 16) as f32, (cy * 16) as f32, (cz * 16) as f32)
-                    )
-                };
-
-                chunk_store.cache(ChunkCoord::new(cx, cy, cz), chunk, model);
-            }
-        }
-    }
-
-    for cy in 1..4 {
-        for cz in 1..9 {
-            for cx in 1..9 {
-                let coordinate = ChunkCoord::new(cx, cy, cz);
-                coords.push(coordinate);
-
-                for x in 0..16 {
-                    for y in 0..16 {
-                        for z in 0..16 {
-                            let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-                            let mut voxel = chunk.get_voxel(x, y, z);
-
-                            // Right face: +z
-                            if z < 15 {
-                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-
-                                if chunk.get_voxel(x, y, z + 1).data != 0 {
-                                    voxel.metadata |= 0x10000000;
-                                }
-                            } else {
-                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx, cy, cz + 1)).unwrap();
-
-                                if neighbor_chunk.get_voxel(x, y, 0).data != 0 {
-                                    voxel.metadata |= 0x10000000;
-                                }
-                            }
-
-                            // Left face: -z
-                            if z > 0 {
-                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-
-                                if chunk.get_voxel(x, y, z - 1).data != 0 {
-                                    voxel.metadata |= 0x20000000;
-                                }
-                            } else {
-                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx, cy, cz - 1)).unwrap();
-
-                                if neighbor_chunk.get_voxel(x, y, 15).data != 0 {
-                                    voxel.metadata |= 0x20000000;
-                                }
-                            }
-
-                            // Front face: +x
-                            if x < 15 {
-                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-
-                                if chunk.get_voxel(x + 1, y, z).data != 0 {
-                                    voxel.metadata |= 0x80000000;
-                                }
-                            } else {
-                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx + 1, cy, cz)).unwrap();
-
-                                if neighbor_chunk.get_voxel(0, y, z).data != 0 {
-                                    voxel.metadata |= 0x80000000;
-                                }
-                            }
-
-                            // Back face: -x
-                            if x > 0 {
-                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-
-                                if chunk.get_voxel(x - 1, y, z).data != 0 {
-                                    voxel.metadata |= 0x40000000;
-                                }
-                            } else {
-                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx - 1, cy, cz)).unwrap();
-
-                                if neighbor_chunk.get_voxel(15, y, z).data != 0 {
-                                    voxel.metadata |= 0x40000000;
-                                }
-                            }
-
-                            // Top face: +y
-                            if y < 15 {
-                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-
-                                if chunk.get_voxel(x, y + 1, z).data != 0 {
-                                    voxel.metadata |= 0x08000000;
-                                }
-                            } else {
-                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx, cy + 1, cz)).unwrap();
-
-                                if neighbor_chunk.get_voxel(x, 0, z).data != 0 {
-                                    voxel.metadata |= 0x08000000;
-                                }
-                            }
-
-                            // Bottom face: -y
-                            if y > 0 {
-                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-
-                                if chunk.get_voxel(x, y - 1, z).data != 0 {
-                                    voxel.metadata |= 0x04000000;
-                                }
-                            } else {
-                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx, cy - 1, cz)).unwrap();
-
-                                if neighbor_chunk.get_voxel(x, 15, z).data != 0 {
-                                    voxel.metadata |= 0x04000000;
-                                }
-                            }
-
-                            let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-                            chunk.set_voxel(x, y, z, voxel);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
+    let (mut chunk_store, coords) = world_init(25, 10);
     let coords = Arc::new(coords);
-
     println!("Chunks created!");
 
     'running: loop {
