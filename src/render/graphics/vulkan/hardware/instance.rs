@@ -60,7 +60,7 @@ impl VulkanInstance {
 
         let validation_layer_name = c_string_or_error("VK_LAYER_KHRONOS_validation".to_string(), InstanceInitError)?;
 
-        if !available_layer_names.contains(&validation_layer_name) {
+        if cfg!(debug_assertions) && !available_layer_names.contains(&validation_layer_name) {
             println!("Validation layer not available on machine");
             return Err(InstanceInitError);
         }
