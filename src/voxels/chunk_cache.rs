@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use crate::graphics::UniformBufferObject;
+use crate::render::UniformBufferObject;
 use super::coord::ChunkCoord;
 use super::chunk::Chunk;
 use std::collections::HashMap;
@@ -29,7 +29,11 @@ impl ChunkCache {
         self.buffer.get_mut(&coord)
     }
 
-    pub fn get_ubo(&mut self, coord: ChunkCoord) -> Option<&UniformBufferObject> {
+    pub fn get_chunk(&self, coord: ChunkCoord) -> Option<&Chunk> {
+        self.buffer.get(&coord)
+    }
+
+    pub fn get_ubo(&self, coord: ChunkCoord) -> Option<&UniformBufferObject> {
         self.ubos.get(&coord)
     }
 }

@@ -2,11 +2,8 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use crate::graphics::hal::context::ImageExtent;
-
-use super::super::hal::context::{
-    Context, ContextError
-};
+use super::super::hal::context::ImageExtent;
+use super::super::hal::context::{ Context, ContextError };
 use super::application::resources::{ VulkanResources };
 use super::frame_resources::{ VulkanFrameResources };
 use super::hardware::device::{ VulkanDevice };
@@ -228,13 +225,13 @@ impl Context for VulkanContext {
         Ok(next_frame)
     }
 
-    fn image_extent(&self) -> Result<ImageExtent, ContextError> {
+    fn image_extent(&self) -> ImageExtent {
         let swapchain_extent = self.swapchain.clone().unwrap().swap_chain_extent;
 
-        Ok(ImageExtent {
+        ImageExtent {
             width: swapchain_extent.width,
             height: swapchain_extent.height,
-        })
+        }
     }
 
     fn window_resize(&mut self) -> Result<(), ContextError> {

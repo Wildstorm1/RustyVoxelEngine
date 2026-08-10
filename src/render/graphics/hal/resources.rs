@@ -3,7 +3,7 @@
  */
 
 use super::stucts::{ Voxel, UniformBufferObject };
-use super::super::super::voxels::{ Chunk };
+use super::super::super::super::voxels::{ Chunk };
 use std::fmt;
 
 /*

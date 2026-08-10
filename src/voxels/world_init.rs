@@ -2,9 +2,35 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use crate::graphics::{ Voxel, UniformBufferObject };
+use crate::render::{ Voxel, UniformBufferObject };
 use crate::voxels::{ Chunk, ChunkCache, ChunkCoord };
 use noise::{ NoiseFn, Perlin, Seedable };
+use bevy_ecs::resource::Resource;
+
+#[derive(Resource)]
+pub struct VoxelWorld {
+    cache: ChunkCache,
+    visibility: Vec<ChunkCoord>
+}
+
+impl VoxelWorld {
+    pub fn new(width: usize, height: usize) -> Self {
+        let (mut chunk_store, coords) = world_init(width, height);
+
+        Self {
+            cache: chunk_store,
+            visibility: coords,
+        }
+    }
+
+    pub fn get_cache(&self) -> &ChunkCache {
+        &self.cache
+    }
+
+    pub fn get_visibility(&self) -> Vec<ChunkCoord> {
+        self.visibility.clone()
+    }
+}
 
 pub fn world_init(width: usize, height: usize) -> (ChunkCache, Vec<ChunkCoord>) {
     let perlin = Perlin::new(1);

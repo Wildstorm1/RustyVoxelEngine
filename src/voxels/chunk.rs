@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use super::super::graphics::Voxel;
+use crate::render::Voxel;
 
 /*
  * Chunk of voxel data

@@ -2,12 +2,12 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use crate::graphics::hal::command_buffer::{ CommandBuffer, CopyBufferPacket, DrawPacket };
-use crate::graphics::hal::context::{ Context, ImageExtent };
-use crate::graphics::hal::resources::{ BufferHandles, Resources, WriteModelBuffer, WriteVoxelBuffer };
-use crate::graphics::hal::frame::{ Frame };
-use crate::graphics::hal::job::{ Job };
-use crate::graphics::hal::stucts::{ UniformBufferObject, Camera, Voxel };
+use super::graphics::hal::command_buffer::{ CommandBuffer, CopyBufferPacket, DrawPacket };
+use super::graphics::hal::context::{ Context, ImageExtent };
+use super::graphics::hal::resources::{ BufferHandles, Resources, WriteModelBuffer, WriteVoxelBuffer };
+use super::graphics::hal::frame::{ Frame };
+use super::graphics::hal::job::{ Job };
+use super::graphics::hal::stucts::{ UniformBufferObject, Camera, Voxel };
 use crate::voxels::{ Chunk, ChunkCache, ChunkCoord };
 use std::sync::Arc;
 
@@ -28,11 +28,11 @@ impl <T: Context> Renderer<T> {
         }
     }
 
-    pub fn extent(&self) -> Result<ImageExtent, RendererError> {
-        self.context.image_extent().map_err(|_| { RendererError })
+    pub fn extent(&self) -> ImageExtent {
+        self.context.image_extent()
     }
 
-    pub fn render(&mut self, camera: Camera, chunks: &mut ChunkCache, coords: Arc<Vec<ChunkCoord>>) -> Result<(), RendererError> {
+    pub fn render(&mut self, camera: Camera, chunks: &ChunkCache, coords: Vec<ChunkCoord>) -> Result<(), RendererError> {
         let frame = self.context.next_frame().map_err(|err| {
             println!("Error getting next frame {:?}", err);
             RendererError
@@ -61,7 +61,7 @@ impl <T: Context> Renderer<T> {
         coords.iter().enumerate().for_each(|(i, chunk)| {
             unsafe { resources.buffer_voxel_data_cpu_side(WriteVoxelBuffer {
                 offset: i,
-                voxels: chunks.get_chunk_mut(*chunk).unwrap()
+                voxels: chunks.get_chunk(*chunk).unwrap()
             }).unwrap()};
 
             unsafe { resources.buffer_model_data_cpu_side(WriteModelBuffer {

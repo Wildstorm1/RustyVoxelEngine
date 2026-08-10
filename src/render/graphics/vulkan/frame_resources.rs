@@ -2,8 +2,7 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use crate::graphics::hal::stucts::UniformBufferObject;
-
+use super::super::hal::stucts::UniformBufferObject;
 use super::super::hal::resources::{
     Resources, ResourcesError, Buffer, Uniform, WriteVoxelBuffer, WriteModelBuffer, BufferHandles, UniformHandles
 };
