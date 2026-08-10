@@ -45,13 +45,22 @@ pub fn world_init(width: usize, height: usize) -> (ChunkCache, Vec<ChunkCoord>) 
                 for x in 0..16 {
                     for y in 0..16 {
                         for z in 0..16 {
-                            let value = perlin.get([
+                            let y_pos = cy * 16 + y;
+
+                            let turbulence = 20.0f64 * perlin.get([
                                 (cx * 16 + x) as f64 / 16.0f64,
-                                (cy * 16 + y) as f64 / 16.0f64,
+                                y_pos as f64 / 16.0f64,
                                 (cz * 16 + z) as f64 / 16.0f64
                             ]);
 
-                            if value > 0.0 {
+                            let plane_value = perlin.get([
+                                ((cx * 16 + x) as f64 + turbulence) / 32.0f64,
+                                ((cz * 16 + z) as f64 + turbulence) / 32.0f64
+                            ]);
+
+                            let noise = 0.25f64 * ((plane_value + 1.0f64) / 2.0f64);
+
+                            if ((y_pos as f32 / (height * 16) as f32) + noise as f32) < 0.5f32 {
                                 chunk.set_voxel(x, y, z, Voxel {
                                     metadata: 0,
                                     data: 1,
