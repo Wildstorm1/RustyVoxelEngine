@@ -13,22 +13,22 @@ use std::sync::{ Arc };
 use ash::{ vk };
 
 #[derive(Clone, Copy)]
-pub struct BufferData {
-    pub buffer: vk::Buffer,
-    pub memory: vk::DeviceMemory,
-    pub bytes: u64
+struct BufferData {
+    buffer: vk::Buffer,
+    memory: vk::DeviceMemory,
+    bytes: u64
 }
 
 #[derive(Clone, Copy)]
-pub struct MappedBufferData {
-    pub buffer: vk::Buffer,
-    pub memory: vk::DeviceMemory,
-    pub mapping: *mut c_void,
-    pub bytes: u64
+struct MappedBufferData {
+    buffer: vk::Buffer,
+    memory: vk::DeviceMemory,
+    mapping: *mut c_void,
+    bytes: u64
 }
 
 /*
- * Vulkan implementation of command buffer
+ * Vulkan implementation resources
  */
 pub struct VulkanResources {
     device: Arc<VulkanDevice>,
@@ -70,13 +70,10 @@ fn create_buffer(
         ..Default::default()
     };
 
-    let buffer = match unsafe { device.device.create_buffer(&create_info, None) } {
-        Ok(buffer) => buffer,
-        Err(err) => {
-            println!("Error allocating vulkan buffer {}", err);
-            return Err(ResourcesError);
-        },
-    };
+    let buffer = unsafe { device.device.create_buffer(&create_info, None).map_err(|err| {
+        println!("Error allocating vulkan buffer {}", err);
+        ResourcesError
+    }) }?;
 
     let memory_requirements = unsafe { device.device.get_buffer_memory_requirements(buffer) };
     let memory_type_index = find_memory_type(&device, memory_requirements.memory_type_bits, properties)?;
@@ -87,21 +84,15 @@ fn create_buffer(
         ..Default::default()
     };
 
-    let device_memory = match unsafe { device.device.allocate_memory(&alloc_info, None) } {
-        Ok(device_memory) => device_memory,
-        Err(err) => {
-            println!("Error allocating device memory {}", err);
-            return Err(ResourcesError);
-        },
-    };
+    let device_memory = unsafe { device.device.allocate_memory(&alloc_info, None).map_err(|err| {
+        println!("Error allocating device memory {}", err);
+        ResourcesError
+    }) }?;
 
-    match unsafe { device.device.bind_buffer_memory(buffer, device_memory, 0) } {
-        Ok(_) => (),
-        Err(err) => {
-            println!("Error binding device memory {}", err);
-            return Err(ResourcesError);
-        }
-    }
+    unsafe { device.device.bind_buffer_memory(buffer, device_memory, 0).map_err(|err| {
+        println!("Error binding device memory {}", err);
+        ResourcesError
+    }) }?;
 
     Ok(BufferData {
         buffer: buffer,

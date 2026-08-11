@@ -83,6 +83,10 @@ pub fn update_camera_direction(
     mut reader: MessageReader<MouseMotion>,
     mut camera: ResMut<PlayerCamera>
 ) {
+    if keyboard.is_pressed(KeyCode::KeyE) {
+        return;
+    }
+
     let mut dx_mov = 0.0f32;
     let mut dy_mov = 0.0f32;
 
@@ -90,12 +94,21 @@ pub fn update_camera_direction(
         // Ignore if the mouse is located at center (happens when moving mouse back to center)
         let extent = render_context.extent();
 
-        if !keyboard.is_pressed(KeyCode::KeyE) && (*x != extent.width as f32 / 2.0 || *y != extent.height as f32 / 2.0) {
-            dx_mov = dx_mov + dx;
-            dy_mov = dy_mov + dy;
+        println!("Mouse motion: {:?} {:?} {:?} {:?} {:?} {:?}", x, y, dx, dy, extent.width, extent.height);
 
-            sdl_context.move_mouse(extent.width as f32 / 2.0, extent.height as f32 / 2.0);
+        if !(*x != extent.width as f32 / 2.0 || *y != extent.height as f32 / 2.0) {
+            continue;
         }
+            
+        if dx.abs() >= 1.0f32 {
+            dx_mov = dx_mov + dx;
+        }
+
+        if dy.abs() >= 1.0f32 {
+            dy_mov = dy_mov + dy;
+        }
+
+        sdl_context.move_mouse(extent.width as f32 / 2.0, extent.height as f32 / 2.0);
     }
 
     let sensitivity = 0.01f32;
