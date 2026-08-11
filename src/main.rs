@@ -56,7 +56,7 @@ fn main() {
     world.insert_non_send(RenderContext::new(renderer));
     world.insert_resource(PlayerCamera::new());
     world.insert_resource(KeyboardButtonInput::new());
-    world.insert_resource(VoxelWorld::new(30, 10));
+    world.insert_resource(VoxelWorld::new(10, 10));
     world.insert_resource(InternalAppEvents::new());
     MessageRegistry::register_message::<MouseMotion>(&mut world);
     MessageRegistry::register_message::<EngineEvent>(&mut world);

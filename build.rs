@@ -19,4 +19,5 @@ fn main() {
 
     let profile = env::var("PROFILE").unwrap();
     copy_to_output("./shaders", &profile).expect("Could not copy files to target");
+    copy_to_output("./assets", &profile).expect("Could not copy files to target");
 }

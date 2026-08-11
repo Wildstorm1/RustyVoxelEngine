@@ -230,10 +230,16 @@ fn create_descriptor_set_resources(
         ..Default::default()
     };
 
-    let pool_sizes = [ model_descriptor_pool_size, voxels_descriptor_pool_size ];
+    let sampler_descriptor_pool_size = vk::DescriptorPoolSize {
+        ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+        descriptor_count: 1,
+        ..Default::default()
+    };
+
+    let pool_sizes = [ model_descriptor_pool_size, voxels_descriptor_pool_size, sampler_descriptor_pool_size ];
 
     let descriptor_pool_create_info = vk::DescriptorPoolCreateInfo {
-        pool_size_count: 2,
+        pool_size_count: pool_sizes.len() as u32,
         p_pool_sizes: pool_sizes.as_ptr(),
         flags: vk::DescriptorPoolCreateFlags::UPDATE_AFTER_BIND,
         max_sets: 1,
@@ -250,12 +256,13 @@ fn create_descriptor_set_resources(
 
     let flags = [
         vk::DescriptorBindingFlags::PARTIALLY_BOUND,
+        vk::DescriptorBindingFlags::PARTIALLY_BOUND,
         vk::DescriptorBindingFlags::PARTIALLY_BOUND
     ];
 
     let binding_flags = vk::DescriptorSetLayoutBindingFlagsCreateInfo {
         p_binding_flags: flags.as_ptr(),
-        binding_count: 2,
+        binding_count: flags.len() as u32,
         ..Default::default()
     };
 
@@ -275,10 +282,18 @@ fn create_descriptor_set_resources(
         ..Default::default()
     };
 
-    let bindings = [ ubo_layout_binding, voxel_layout_binding ];
+    let sampler_layout_binding = vk::DescriptorSetLayoutBinding {
+        binding: 2,
+        descriptor_type: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+        descriptor_count: 1,
+        stage_flags: vk::ShaderStageFlags::FRAGMENT,
+        ..Default::default()
+    };
+
+    let bindings = [ ubo_layout_binding, voxel_layout_binding, sampler_layout_binding ];
 
     let layout_info = vk::DescriptorSetLayoutCreateInfo {
-        binding_count: 2,
+        binding_count: bindings.len() as u32,
         flags: vk::DescriptorSetLayoutCreateFlags::UPDATE_AFTER_BIND_POOL,
         p_bindings: bindings.as_ptr(),
         p_next: (&raw const binding_flags) as *const c_void,
@@ -392,6 +407,7 @@ impl VulkanDevice {
         };
 
         let device_features = vk::PhysicalDeviceFeatures {
+            sampler_anisotropy: vk::TRUE,
             ..Default::default()
         };
 

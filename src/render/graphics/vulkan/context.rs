@@ -8,6 +8,7 @@ use super::application::resources::{ VulkanResources };
 use super::frame_resources::{ VulkanFrameResources };
 use super::hardware::device::{ VulkanDevice };
 use super::hardware::swapchain::{ VulkanSwapchain };
+use super::application::textures::{ VulkanTextures };
 use super::application::render_pass::{ VulkanRenderPass };
 use super::application::pipeline::{ VulkanPipeline };
 use super::frame::VulkanFrame;
@@ -37,6 +38,7 @@ pub struct VulkanContext {
     resources: Arc<VulkanResources>,
     render_pass: Option<Arc<VulkanRenderPass>>,
     pipeline: Option<Arc<VulkanPipeline>>,
+    textures: VulkanTextures,
     frame_contexts: Vec<FrameContext>,
     swap_chain_contexts: Vec<SwapchainViewContext>,
     frames: Vec<Option<Arc<VulkanFrame>>>,
@@ -84,6 +86,11 @@ impl VulkanContext {
                 return Err(ContextError);
             }
         };
+
+        let textures = VulkanTextures::new(device.clone()).map_err(|err| {
+            println!("Error creating vulkan textures {:?}", err);
+            ContextError
+        })?;
 
         let mut frame_contexts = Vec::new();
         let mut frames = Vec::new();
@@ -164,6 +171,7 @@ impl VulkanContext {
             resources: resources,
             render_pass: Some(render_pass),
             pipeline: Some(pipeline),
+            textures: textures,
             frame_contexts: frame_contexts,
             swap_chain_contexts: swap_chain_contexts,
             frames: frames,
