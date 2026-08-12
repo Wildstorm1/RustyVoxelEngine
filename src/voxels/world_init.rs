@@ -37,6 +37,7 @@ pub fn world_init(width: usize, height: usize) -> (ChunkCache, Vec<ChunkCoord>) 
     let mut chunk_store = ChunkCache::new();
     let mut coords = Vec::new();
 
+    // Pass 1 assigns "solidness"
     for cy in 0..height {
         for cz in 0..width {
             for cx in 0..width {
@@ -61,15 +62,9 @@ pub fn world_init(width: usize, height: usize) -> (ChunkCache, Vec<ChunkCoord>) 
                             let noise = 0.25f64 * ((plane_value + 1.0f64) / 2.0f64);
 
                             if ((y_pos as f32 / (height * 16) as f32) + noise as f32) < 0.5f32 {
-                                let mut voxel_id = 5;
-
-                                if ((y_pos as f32 / (height * 16) as f32) + noise as f32) > 0.485f32 {
-                                    voxel_id = 1;
-                                }
-
                                 chunk.set_voxel(x, y, z, Voxel {
                                     metadata: 0,
-                                    data: voxel_id,
+                                    data: 5,
                                 });
                             }
                         }
@@ -93,6 +88,45 @@ pub fn world_init(width: usize, height: usize) -> (ChunkCache, Vec<ChunkCoord>) 
         }
     }
 
+    // Pass 2 assigns block type and ambient occlusion
+    for cy in 1..(height - 1) {
+        for cz in 1..(width - 1) {
+            for cx in 1..(width - 1) {
+                let coordinate = ChunkCoord::new(cx, cy, cz);
+                coords.push(coordinate);
+
+                for x in 0..16 {
+                    for y in 0..16 {
+                        for z in 0..16 {
+                            let up_voxel;
+
+                            // Top face: +y
+                            if y < 15 {
+                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
+                                up_voxel = chunk.get_voxel(x, y + 1, z);
+                            } else {
+                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx, cy + 1, cz)).unwrap();
+                                up_voxel = neighbor_chunk.get_voxel(x, 0, z);
+                            }
+
+                            let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
+                            let voxel =  chunk.get_voxel(x, y, z);
+
+                            // If upper voxel is open, assign grass
+                            if voxel.data != 0 && up_voxel.data == 0 {
+                                chunk.set_voxel(x, y, z, Voxel {
+                                    metadata: 0,
+                                    data: 1,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Pass 3 assigns metadata about neighbors
     for cy in 1..(height - 1) {
         for cz in 1..(width - 1) {
             for cx in 1..(width - 1) {
