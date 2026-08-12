@@ -14,6 +14,7 @@ layout(max_vertices = 24, max_primitives = 12) out;
 
 layout(location = 0) out vec2 fragTexCoord[];
 layout(location = 1) out vec3 normals[];
+layout(location = 2) out float ambientOcclusion[];
 
 layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 model;
@@ -32,6 +33,216 @@ layout(push_constant) uniform Constants {
     mat4 view;
     mat4 proj;
 } camera;
+
+/* Hardcoded texture atlas values (8x4) */
+float step_u = 1.0 / 8.0;
+float step_v = 1.0 / 4.0;
+float padding_u = 0.025;
+float padding_v = 0.05;
+
+void push_right_face(uint vi, uint pi, float u, float v, mat4 pvm) {
+    gl_MeshVerticesEXT[vi + 0].gl_Position = pvm * vec4(0.0, 0.0, 1.0, 1.0);
+    gl_MeshVerticesEXT[vi + 1].gl_Position = pvm * vec4(1.0, 0.0, 1.0, 1.0);
+    gl_MeshVerticesEXT[vi + 2].gl_Position = pvm * vec4(0.0, 1.0, 1.0, 1.0);
+    gl_MeshVerticesEXT[vi + 3].gl_Position = pvm * vec4(1.0, 1.0, 1.0, 1.0);
+    gl_PrimitiveTriangleIndicesEXT[pi + 0] = uvec3(vi + 0, vi + 1, vi + 2);
+    gl_PrimitiveTriangleIndicesEXT[pi + 1] = uvec3(vi + 2, vi + 1, vi + 3);
+
+    fragTexCoord[vi + 0] = vec2(
+        (u * step_u) + padding_u,
+        (v * step_v) + step_v - padding_v
+    );
+    fragTexCoord[vi + 1] = vec2(
+        (u * step_u) + step_u - padding_u,
+        (v * step_v) + step_v - padding_v
+    );
+    fragTexCoord[vi + 2] = vec2(
+        (u * step_u) + padding_u,
+        (v * step_v) + padding_v
+    );
+    fragTexCoord[vi + 3] = vec2(
+        (u * step_u) + step_u - padding_u,
+        (v * step_v) + padding_v
+    );
+    normals[vi + 0] = vec3(0.0, 0.0, 1.0);
+    normals[vi + 1] = vec3(0.0, 0.0, 1.0);
+    normals[vi + 2] = vec3(0.0, 0.0, 1.0);
+    normals[vi + 3] = vec3(0.0, 0.0, 1.0);
+    ambientOcclusion[vi + 0] = 1.0;
+    ambientOcclusion[vi + 1] = 1.0;
+    ambientOcclusion[vi + 2] = 1.0;
+    ambientOcclusion[vi + 3] = 1.0;
+}
+
+void push_front_face(uint vi, uint pi, float u, float v, mat4 pvm) {
+    gl_MeshVerticesEXT[vi + 0].gl_Position = pvm * vec4(1.0, 0.0, 0.0, 1.0);
+    gl_MeshVerticesEXT[vi + 1].gl_Position = pvm * vec4(1.0, 1.0, 0.0, 1.0);
+    gl_MeshVerticesEXT[vi + 2].gl_Position = pvm * vec4(1.0, 0.0, 1.0, 1.0);
+    gl_MeshVerticesEXT[vi + 3].gl_Position = pvm * vec4(1.0, 1.0, 1.0, 1.0);
+    gl_PrimitiveTriangleIndicesEXT[pi + 0] = uvec3(vi + 0, vi + 1, vi + 2);
+    gl_PrimitiveTriangleIndicesEXT[pi + 1] = uvec3(vi + 2, vi + 1, vi + 3);
+
+    fragTexCoord[vi + 0] = vec2(
+        (u * step_u) + step_u - padding_u,
+        (v * step_v) + step_v - padding_v
+    );
+    fragTexCoord[vi + 1] = vec2(
+        (u * step_u) + step_u - padding_u,
+        (v * step_v) + padding_v
+    );
+    fragTexCoord[vi + 2] = vec2(
+        (u * step_u) + padding_u,
+        (v * step_v) + step_v - padding_v
+    );
+    fragTexCoord[vi + 3] = vec2(
+        (u * step_u) + padding_u,
+        (v * step_v) + padding_v
+    );
+    normals[vi + 0] = vec3(1.0, 0.0, 0.0);
+    normals[vi + 1] = vec3(1.0, 0.0, 0.0);
+    normals[vi + 2] = vec3(1.0, 0.0, 0.0);
+    normals[vi + 3] = vec3(1.0, 0.0, 0.0);
+    ambientOcclusion[vi + 0] = 1.0;
+    ambientOcclusion[vi + 1] = 1.0;
+    ambientOcclusion[vi + 2] = 1.0;
+    ambientOcclusion[vi + 3] = 1.0;
+}
+
+void push_bottom_face(uint vi, uint pi, float u, float v, mat4 pvm) {
+    gl_MeshVerticesEXT[vi + 0].gl_Position = pvm * vec4(0.0, 0.0, 0.0, 1.0);
+    gl_MeshVerticesEXT[vi + 1].gl_Position = pvm * vec4(1.0, 0.0, 0.0, 1.0);
+    gl_MeshVerticesEXT[vi + 2].gl_Position = pvm * vec4(0.0, 0.0, 1.0, 1.0);
+    gl_MeshVerticesEXT[vi + 3].gl_Position = pvm * vec4(1.0, 0.0, 1.0, 1.0);
+    gl_PrimitiveTriangleIndicesEXT[pi + 0] = uvec3(vi + 0, vi + 1, vi + 2);
+    gl_PrimitiveTriangleIndicesEXT[pi + 1] = uvec3(vi + 2, vi + 1, vi + 3);
+
+    fragTexCoord[vi + 0] = vec2(
+        (u * step_u) + step_u - padding_u,
+        (v * step_v) + step_v - padding_v
+    );
+    fragTexCoord[vi + 1] = vec2(
+        (u * step_u) + step_u - padding_u,
+        (v * step_v) + padding_v
+    );
+    fragTexCoord[vi + 2] = vec2(
+        (u * step_u) + padding_u,
+        (v * step_v) + step_v - padding_v
+    );
+    fragTexCoord[vi + 3] = vec2(
+        (u * step_u) + padding_u,
+        (v * step_v) + padding_v
+    );
+    normals[vi + 0] = vec3(0.0, -1.0, 0.0);
+    normals[vi + 1] = vec3(0.0, -1.0, 0.0);
+    normals[vi + 2] = vec3(0.0, -1.0, 0.0);
+    normals[vi + 3] = vec3(0.0, -1.0, 0.0);
+    ambientOcclusion[vi + 0] = 1.0;
+    ambientOcclusion[vi + 1] = 1.0;
+    ambientOcclusion[vi + 2] = 1.0;
+    ambientOcclusion[vi + 3] = 1.0;
+}
+
+void push_left_face(uint vi, uint pi, float u, float v, mat4 pvm) {
+    gl_MeshVerticesEXT[vi + 0].gl_Position = pvm * vec4(0.0, 0.0, 0.0, 1.0);
+    gl_MeshVerticesEXT[vi + 1].gl_Position = pvm * vec4(0.0, 1.0, 0.0, 1.0);
+    gl_MeshVerticesEXT[vi + 2].gl_Position = pvm * vec4(1.0, 0.0, 0.0, 1.0);
+    gl_MeshVerticesEXT[vi + 3].gl_Position = pvm * vec4(1.0, 1.0, 0.0, 1.0);
+    gl_PrimitiveTriangleIndicesEXT[pi + 0] = uvec3(vi + 0, vi + 1, vi + 2);
+    gl_PrimitiveTriangleIndicesEXT[pi + 1] = uvec3(vi + 2, vi + 1, vi + 3);
+
+    fragTexCoord[vi + 0] = vec2(
+        (u * step_u) + step_u - padding_u,
+        (v * step_v) + step_v - padding_v
+    );
+    fragTexCoord[vi + 1] = vec2(
+        (u * step_u) + step_u - padding_u,
+        (v * step_v) + padding_v
+    );
+    fragTexCoord[vi + 2] = vec2(
+        (u * step_u) + padding_u,
+        (v * step_v) + step_v - padding_v
+    );
+    fragTexCoord[vi + 3] = vec2(
+        (u * step_u) + padding_u,
+        (v * step_v) + padding_v
+    );
+    normals[vi + 0] = vec3(0.0, 0.0, -1.0);
+    normals[vi + 1] = vec3(0.0, 0.0, -1.0);
+    normals[vi + 2] = vec3(0.0, 0.0, -1.0);
+    normals[vi + 3] = vec3(0.0, 0.0, -1.0);
+    ambientOcclusion[vi + 0] = 1.0;
+    ambientOcclusion[vi + 1] = 1.0;
+    ambientOcclusion[vi + 2] = 1.0;
+    ambientOcclusion[vi + 3] = 1.0;
+}
+
+void push_back_face(uint vi, uint pi, float u, float v, mat4 pvm) {
+    gl_MeshVerticesEXT[vi + 0].gl_Position = pvm * vec4(0.0, 0.0, 0.0, 1.0);
+    gl_MeshVerticesEXT[vi + 1].gl_Position = pvm * vec4(0.0, 0.0, 1.0, 1.0);
+    gl_MeshVerticesEXT[vi + 2].gl_Position = pvm * vec4(0.0, 1.0, 0.0, 1.0);
+    gl_MeshVerticesEXT[vi + 3].gl_Position = pvm * vec4(0.0, 1.0, 1.0, 1.0);
+    gl_PrimitiveTriangleIndicesEXT[pi + 0] = uvec3(vi + 0, vi + 1, vi + 2);
+    gl_PrimitiveTriangleIndicesEXT[pi + 1] = uvec3(vi + 2, vi + 1, vi + 3);
+
+    fragTexCoord[vi + 0] = vec2(
+        (u * step_u) + padding_u,
+        (v * step_v) + step_v - padding_v
+    );
+    fragTexCoord[vi + 1] = vec2(
+        (u * step_u) + step_u - padding_u,
+        (v * step_v) + step_v - padding_v
+    );
+    fragTexCoord[vi + 2] = vec2(
+        (u * step_u) + padding_u,
+        (v * step_v) + padding_v
+    );
+    fragTexCoord[vi + 3] = vec2(
+        (u * step_u) + step_u - padding_u,
+        (v * step_v) + padding_v
+    );
+    normals[vi + 0] = vec3(-1.0, 0.0, 0.0);
+    normals[vi + 1] = vec3(-1.0, 0.0, 0.0);
+    normals[vi + 2] = vec3(-1.0, 0.0, 0.0);
+    normals[vi + 3] = vec3(-1.0, 0.0, 0.0);
+    ambientOcclusion[vi + 0] = 1.0;
+    ambientOcclusion[vi + 1] = 1.0;
+    ambientOcclusion[vi + 2] = 1.0;
+    ambientOcclusion[vi + 3] = 1.0;
+}
+
+void push_top_face(uint vi, uint pi, float u, float v, mat4 pvm) {
+    gl_MeshVerticesEXT[vi + 0].gl_Position = pvm * vec4(0.0, 1.0, 0.0, 1.0);
+    gl_MeshVerticesEXT[vi + 1].gl_Position = pvm * vec4(0.0, 1.0, 1.0, 1.0);
+    gl_MeshVerticesEXT[vi + 2].gl_Position = pvm * vec4(1.0, 1.0, 0.0, 1.0);
+    gl_MeshVerticesEXT[vi + 3].gl_Position = pvm * vec4(1.0, 1.0, 1.0, 1.0);
+    gl_PrimitiveTriangleIndicesEXT[pi + 0] = uvec3(vi + 0, vi + 1, vi + 2);
+    gl_PrimitiveTriangleIndicesEXT[pi + 1] = uvec3(vi + 2, vi + 1, vi + 3);
+
+    fragTexCoord[vi + 0] = vec2(
+        (u * step_u) + step_u - padding_u,
+        (v * step_v) + step_v - padding_v
+    );
+    fragTexCoord[vi + 1] = vec2(
+        (u * step_u) + padding_u,
+        (v * step_v) + step_v - padding_v
+    );
+    fragTexCoord[vi + 2] = vec2(
+        (u * step_u) + step_u - padding_u,
+        (v * step_v) + padding_v
+    );
+    fragTexCoord[vi + 3] = vec2(
+        (u * step_u) + padding_u,
+        (v * step_v) + padding_v
+    );
+    normals[vi + 0] = vec3(0.0, 1.0, 0.0);
+    normals[vi + 1] = vec3(0.0, 1.0, 0.0);
+    normals[vi + 2] = vec3(0.0, 1.0, 0.0);
+    normals[vi + 3] = vec3(0.0, 1.0, 0.0);
+    ambientOcclusion[vi + 0] = 1.0;
+    ambientOcclusion[vi + 1] = 1.0;
+    ambientOcclusion[vi + 2] = 1.0;
+    ambientOcclusion[vi + 3] = 1.0;
+}
 
 void main() {
     // TODO: Hardcoded chunk size
@@ -88,207 +299,47 @@ void main() {
 
     float base_u_offset = mod(voxel.data - 1.0, 8);
     float base_v_offset = floor((voxel.data - 1.0) / 8);
-    float step_u = 1.0 / 8.0;
-    float step_v = 1.0 / 4.0;
-    float padding_u = 0.025;
-    float padding_v = 0.05;
     uint base_vertex_index = 0;
     uint base_primitive_index = 0;
 
     // Right face
     if ((voxel.metadata & 0x10000000u) == 0) {
-        gl_MeshVerticesEXT[base_vertex_index + 0].gl_Position = pvm_matrix * vec4(0.0, 0.0, 1.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 1].gl_Position = pvm_matrix * vec4(1.0, 0.0, 1.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 2].gl_Position = pvm_matrix * vec4(0.0, 1.0, 1.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 3].gl_Position = pvm_matrix * vec4(1.0, 1.0, 1.0, 1.0);
-        fragTexCoord[base_vertex_index + 0] = vec2(
-            (base_u_offset * step_u) + padding_u,
-            (base_v_offset * step_v) + step_v - padding_v
-        );
-        fragTexCoord[base_vertex_index + 1] = vec2(
-            (base_u_offset * step_u) + step_u - padding_u,
-            (base_v_offset * step_v) + step_v - padding_v
-        );
-        fragTexCoord[base_vertex_index + 2] = vec2(
-            (base_u_offset * step_u) + padding_u,
-            (base_v_offset * step_v) + padding_v
-        );
-        fragTexCoord[base_vertex_index + 3] = vec2(
-            (base_u_offset * step_u) + step_u - padding_u,
-            (base_v_offset * step_v) + padding_v
-        );
-        normals[base_vertex_index + 0] = vec3(0.0, 0.0, 1.0);
-        normals[base_vertex_index + 1] = vec3(0.0, 0.0, 1.0);
-        normals[base_vertex_index + 2] = vec3(0.0, 0.0, 1.0);
-        normals[base_vertex_index + 3] = vec3(0.0, 0.0, 1.0);
-
-        gl_PrimitiveTriangleIndicesEXT[base_primitive_index + 0] = uvec3(base_vertex_index + 0, base_vertex_index + 1, base_vertex_index + 2);
-        gl_PrimitiveTriangleIndicesEXT[base_primitive_index + 1] = uvec3(base_vertex_index + 2, base_vertex_index + 1, base_vertex_index + 3);
+        push_right_face(base_vertex_index, base_primitive_index, base_u_offset, base_v_offset, pvm_matrix);
         base_vertex_index = base_vertex_index + 4;
         base_primitive_index = base_primitive_index + 2;
     }
 
     // Front face
     if ((voxel.metadata & 0x80000000u) == 0) {
-        gl_MeshVerticesEXT[base_vertex_index + 0].gl_Position = pvm_matrix * vec4(1.0, 0.0, 0.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 1].gl_Position = pvm_matrix * vec4(1.0, 1.0, 0.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 2].gl_Position = pvm_matrix * vec4(1.0, 0.0, 1.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 3].gl_Position = pvm_matrix * vec4(1.0, 1.0, 1.0, 1.0);
-        fragTexCoord[base_vertex_index + 0] = vec2(
-            (base_u_offset * step_u) + step_u - padding_u,
-            (base_v_offset * step_v) + step_v - padding_v
-        );
-        fragTexCoord[base_vertex_index + 1] = vec2(
-            (base_u_offset * step_u) + step_u - padding_u,
-            (base_v_offset * step_v) + padding_v
-        );
-        fragTexCoord[base_vertex_index + 2] = vec2(
-            (base_u_offset * step_u) + padding_u,
-            (base_v_offset * step_v) + step_v - padding_v
-        );
-        fragTexCoord[base_vertex_index + 3] = vec2(
-            (base_u_offset * step_u) + padding_u,
-            (base_v_offset * step_v) + padding_v
-        );
-        normals[base_vertex_index + 0] = vec3(1.0, 0.0, 0.0);
-        normals[base_vertex_index + 1] = vec3(1.0, 0.0, 0.0);
-        normals[base_vertex_index + 2] = vec3(1.0, 0.0, 0.0);
-        normals[base_vertex_index + 3] = vec3(1.0, 0.0, 0.0);
-
-        gl_PrimitiveTriangleIndicesEXT[base_primitive_index + 0] = uvec3(base_vertex_index + 0, base_vertex_index + 1, base_vertex_index + 2);
-        gl_PrimitiveTriangleIndicesEXT[base_primitive_index + 1] = uvec3(base_vertex_index + 2, base_vertex_index + 1, base_vertex_index + 3);
+        push_front_face(base_vertex_index, base_primitive_index, base_u_offset, base_v_offset, pvm_matrix);
         base_vertex_index = base_vertex_index + 4;
         base_primitive_index = base_primitive_index + 2;
     }
 
     // Bottom face
     if ((voxel.metadata & 0x04000000u) == 0) {
-        gl_MeshVerticesEXT[base_vertex_index + 0].gl_Position = pvm_matrix * vec4(0.0, 0.0, 0.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 1].gl_Position = pvm_matrix * vec4(1.0, 0.0, 0.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 2].gl_Position = pvm_matrix * vec4(0.0, 0.0, 1.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 3].gl_Position = pvm_matrix * vec4(1.0, 0.0, 1.0, 1.0);
-        fragTexCoord[base_vertex_index + 0] = vec2(
-            (base_u_offset * step_u) + step_u - padding_u,
-            (base_v_offset * step_v) + step_v - padding_v
-        );
-        fragTexCoord[base_vertex_index + 1] = vec2(
-            (base_u_offset * step_u) + step_u - padding_u,
-            (base_v_offset * step_v) + padding_v
-        );
-        fragTexCoord[base_vertex_index + 2] = vec2(
-            (base_u_offset * step_u) + padding_u,
-            (base_v_offset * step_v) + step_v - padding_v
-        );
-        fragTexCoord[base_vertex_index + 3] = vec2(
-            (base_u_offset * step_u) + padding_u,
-            (base_v_offset * step_v) + padding_v
-        );
-        normals[base_vertex_index + 0] = vec3(0.0, -1.0, 0.0);
-        normals[base_vertex_index + 1] = vec3(0.0, -1.0, 0.0);
-        normals[base_vertex_index + 2] = vec3(0.0, -1.0, 0.0);
-        normals[base_vertex_index + 3] = vec3(0.0, -1.0, 0.0);
-
-        gl_PrimitiveTriangleIndicesEXT[base_primitive_index + 0] = uvec3(base_vertex_index + 0, base_vertex_index + 1, base_vertex_index + 2);
-        gl_PrimitiveTriangleIndicesEXT[base_primitive_index + 1] = uvec3(base_vertex_index + 2, base_vertex_index + 1, base_vertex_index + 3);
+        push_bottom_face(base_vertex_index, base_primitive_index, base_u_offset, base_v_offset, pvm_matrix);
         base_vertex_index = base_vertex_index + 4;
         base_primitive_index = base_primitive_index + 2;
     }
 
     // Left face
     if ((voxel.metadata & 0x20000000u) == 0) {
-        gl_MeshVerticesEXT[base_vertex_index + 0].gl_Position = pvm_matrix * vec4(0.0, 0.0, 0.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 1].gl_Position = pvm_matrix * vec4(0.0, 1.0, 0.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 2].gl_Position = pvm_matrix * vec4(1.0, 0.0, 0.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 3].gl_Position = pvm_matrix * vec4(1.0, 1.0, 0.0, 1.0);
-        fragTexCoord[base_vertex_index + 0] = vec2(
-            (base_u_offset * step_u) + step_u - padding_u,
-            (base_v_offset * step_v) + step_v - padding_v
-        );
-        fragTexCoord[base_vertex_index + 1] = vec2(
-            (base_u_offset * step_u) + step_u - padding_u,
-            (base_v_offset * step_v) + padding_v
-        );
-        fragTexCoord[base_vertex_index + 2] = vec2(
-            (base_u_offset * step_u) + padding_u,
-            (base_v_offset * step_v) + step_v - padding_v
-        );
-        fragTexCoord[base_vertex_index + 3] = vec2(
-            (base_u_offset * step_u) + padding_u,
-            (base_v_offset * step_v) + padding_v
-        );
-        normals[base_vertex_index + 0] = vec3(0.0, 0.0, -1.0);
-        normals[base_vertex_index + 1] = vec3(0.0, 0.0, -1.0);
-        normals[base_vertex_index + 2] = vec3(0.0, 0.0, -1.0);
-        normals[base_vertex_index + 3] = vec3(0.0, 0.0, -1.0);
-
-        gl_PrimitiveTriangleIndicesEXT[base_primitive_index + 0] = uvec3(base_vertex_index + 0, base_vertex_index + 1, base_vertex_index + 2);
-        gl_PrimitiveTriangleIndicesEXT[base_primitive_index + 1] = uvec3(base_vertex_index + 2, base_vertex_index + 1, base_vertex_index + 3);
+        push_left_face(base_vertex_index, base_primitive_index, base_u_offset, base_v_offset, pvm_matrix);
         base_vertex_index = base_vertex_index + 4;
         base_primitive_index = base_primitive_index + 2;
     }
 
     // Back face
     if ((voxel.metadata & 0x40000000u) == 0) {
-        gl_MeshVerticesEXT[base_vertex_index + 0].gl_Position = pvm_matrix * vec4(0.0, 0.0, 0.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 1].gl_Position = pvm_matrix * vec4(0.0, 0.0, 1.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 2].gl_Position = pvm_matrix * vec4(0.0, 1.0, 0.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 3].gl_Position = pvm_matrix * vec4(0.0, 1.0, 1.0, 1.0);
-        fragTexCoord[base_vertex_index + 0] = vec2(
-            (base_u_offset * step_u) + padding_u,
-            (base_v_offset * step_v) + step_v - padding_v
-        );
-        fragTexCoord[base_vertex_index + 1] = vec2(
-            (base_u_offset * step_u) + step_u - padding_u,
-            (base_v_offset * step_v) + step_v - padding_v
-        );
-        fragTexCoord[base_vertex_index + 2] = vec2(
-            (base_u_offset * step_u) + padding_u,
-            (base_v_offset * step_v) + padding_v
-        );
-        fragTexCoord[base_vertex_index + 3] = vec2(
-            (base_u_offset * step_u) + step_u - padding_u,
-            (base_v_offset * step_v) + padding_v
-        );
-        normals[base_vertex_index + 0] = vec3(-1.0, 0.0, 0.0);
-        normals[base_vertex_index + 1] = vec3(-1.0, 0.0, 0.0);
-        normals[base_vertex_index + 2] = vec3(-1.0, 0.0, 0.0);
-        normals[base_vertex_index + 3] = vec3(-1.0, 0.0, 0.0);
-
-        gl_PrimitiveTriangleIndicesEXT[base_primitive_index + 0] = uvec3(base_vertex_index + 0, base_vertex_index + 1, base_vertex_index + 2);
-        gl_PrimitiveTriangleIndicesEXT[base_primitive_index + 1] = uvec3(base_vertex_index + 2, base_vertex_index + 1, base_vertex_index + 3);
+        push_back_face(base_vertex_index, base_primitive_index, base_u_offset, base_v_offset, pvm_matrix);
         base_vertex_index = base_vertex_index + 4;
         base_primitive_index = base_primitive_index + 2;
     }
 
     // Top face
     if ((voxel.metadata & 0x08000000u) == 0) {
-        gl_MeshVerticesEXT[base_vertex_index + 0].gl_Position = pvm_matrix * vec4(0.0, 1.0, 0.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 1].gl_Position = pvm_matrix * vec4(0.0, 1.0, 1.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 2].gl_Position = pvm_matrix * vec4(1.0, 1.0, 0.0, 1.0);
-        gl_MeshVerticesEXT[base_vertex_index + 3].gl_Position = pvm_matrix * vec4(1.0, 1.0, 1.0, 1.0);
-        fragTexCoord[base_vertex_index + 0] = vec2(
-            (base_u_offset * step_u) + step_u - padding_u,
-            (base_v_offset * step_v) + step_v - padding_v
-        );
-        fragTexCoord[base_vertex_index + 1] = vec2(
-            (base_u_offset * step_u) + padding_u,
-            (base_v_offset * step_v) + step_v - padding_v
-        );
-        fragTexCoord[base_vertex_index + 2] = vec2(
-            (base_u_offset * step_u) + step_u - padding_u,
-            (base_v_offset * step_v) + padding_v
-        );
-        fragTexCoord[base_vertex_index + 3] = vec2(
-            (base_u_offset * step_u) + padding_u,
-            (base_v_offset * step_v) + padding_v
-        );
-        normals[base_vertex_index + 0] = vec3(0.0, 1.0, 0.0);
-        normals[base_vertex_index + 1] = vec3(0.0, 1.0, 0.0);
-        normals[base_vertex_index + 2] = vec3(0.0, 1.0, 0.0);
-        normals[base_vertex_index + 3] = vec3(0.0, 1.0, 0.0);
-
-        gl_PrimitiveTriangleIndicesEXT[base_primitive_index + 0] = uvec3(base_vertex_index + 0, base_vertex_index + 1, base_vertex_index + 2);
-        gl_PrimitiveTriangleIndicesEXT[base_primitive_index + 1] = uvec3(base_vertex_index + 2, base_vertex_index + 1, base_vertex_index + 3);
+        push_top_face(base_vertex_index, base_primitive_index, base_u_offset, base_v_offset, pvm_matrix);
         base_vertex_index = base_vertex_index + 4;
         base_primitive_index = base_primitive_index + 2;
     }
