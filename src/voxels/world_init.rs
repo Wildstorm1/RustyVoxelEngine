@@ -2,15 +2,44 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use crate::render::{ Voxel, UniformBufferObject };
-use crate::voxels::{ Chunk, ChunkCache, ChunkCoord };
+use crate::render::{
+    Voxel,
+    UniformBufferObject,
+    RIGHT_FACE_METADATA_BIT,
+    LEFT_FACE_METADATA_BIT,
+    FRONT_FACE_METADATA_BIT,
+    BACK_FACE_METADATA_BIT,
+    TOP_FACE_METADATA_BIT,
+    BOTTOM_FACE_METADATA_BIT,
+    VOXEL_P1_00_P1,
+    VOXEL_00_P1_P1,
+    VOXEL_P1_P1_P1,
+    VOXEL_N1_00_P1,
+    VOXEL_N1_P1_P1,
+    VOXEL_00_N1_P1,
+    VOXEL_P1_N1_P1,
+    VOXEL_N1_N1_P1,
+    VOXEL_P1_P1_00,
+    VOXEL_P1_N1_00,
+    VOXEL_P1_00_N1,
+    VOXEL_P1_P1_N1,
+    VOXEL_P1_N1_N1,
+    VOXEL_00_P1_N1,
+    VOXEL_00_N1_N1,
+    VOXEL_N1_00_N1,
+    VOXEL_N1_P1_N1,
+    VOXEL_N1_N1_N1,
+    VOXEL_N1_P1_00,
+    VOXEL_N1_N1_00
+};
+use crate::voxels::{ Chunk, ChunkCache, Coord };
 use noise::{ NoiseFn, Perlin, Seedable };
 use bevy_ecs::resource::Resource;
 
 #[derive(Resource)]
 pub struct VoxelWorld {
     cache: ChunkCache,
-    visibility: Vec<ChunkCoord>
+    visibility: Vec<Coord>
 }
 
 impl VoxelWorld {
@@ -27,12 +56,12 @@ impl VoxelWorld {
         &self.cache
     }
 
-    pub fn get_visibility(&self) -> Vec<ChunkCoord> {
+    pub fn get_visibility(&self) -> Vec<Coord> {
         self.visibility.clone()
     }
 }
 
-pub fn world_init(width: usize, height: usize) -> (ChunkCache, Vec<ChunkCoord>) {
+pub fn world_init(width: usize, height: usize) -> (ChunkCache, Vec<Coord>) {
     let perlin = Perlin::new(1);
     let mut chunk_store = ChunkCache::new();
     let mut coords = Vec::new();
@@ -83,7 +112,7 @@ pub fn world_init(width: usize, height: usize) -> (ChunkCache, Vec<ChunkCoord>) 
                     )
                 };
 
-                chunk_store.cache(ChunkCoord::new(cx, cy, cz), chunk, model);
+                chunk_store.cache(Coord::new(cx as i64, cy as i64, cz as i64), chunk, model);
             }
         }
     }
@@ -92,32 +121,19 @@ pub fn world_init(width: usize, height: usize) -> (ChunkCache, Vec<ChunkCoord>) 
     for cy in 1..(height - 1) {
         for cz in 1..(width - 1) {
             for cx in 1..(width - 1) {
-                let coordinate = ChunkCoord::new(cx, cy, cz);
-                coords.push(coordinate);
-
-                for x in 0..16 {
-                    for y in 0..16 {
-                        for z in 0..16 {
-                            let up_voxel;
-
-                            // Top face: +y
-                            if y < 15 {
-                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-                                up_voxel = chunk.get_voxel(x, y + 1, z);
-                            } else {
-                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx, cy + 1, cz)).unwrap();
-                                up_voxel = neighbor_chunk.get_voxel(x, 0, z);
-                            }
-
-                            let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-                            let voxel =  chunk.get_voxel(x, y, z);
+                for x in (cx * 16)..((cx + 1) * 16) {
+                    for y in (cy * 16)..((cy + 1) * 16) {
+                        for z in (cz * 16)..((cz + 1) * 16) {
+                            let voxel_coord = Coord::new(x as i64, y as i64, z as i64);
+                            let up_voxel = chunk_store.get_voxel(voxel_coord + Coord::unit_y()).unwrap();
+                            let voxel = chunk_store.get_voxel(voxel_coord).unwrap();
 
                             // If upper voxel is open, assign grass
                             if voxel.data != 0 && up_voxel.data == 0 {
-                                chunk.set_voxel(x, y, z, Voxel {
+                                chunk_store.set_voxel(voxel_coord, Voxel {
                                     metadata: 0,
                                     data: 1,
-                                });
+                                }).unwrap();
                             }
                         }
                     }
@@ -130,107 +146,126 @@ pub fn world_init(width: usize, height: usize) -> (ChunkCache, Vec<ChunkCoord>) 
     for cy in 1..(height - 1) {
         for cz in 1..(width - 1) {
             for cx in 1..(width - 1) {
-                let coordinate = ChunkCoord::new(cx, cy, cz);
-                coords.push(coordinate);
+                let chunk_coordinate = Coord::new(cx as i64, cy as i64, cz as i64);
+                coords.push(chunk_coordinate);
 
-                for x in 0..16 {
-                    for y in 0..16 {
-                        for z in 0..16 {
-                            let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-                            let mut voxel = chunk.get_voxel(x, y, z);
+                for x in (cx * 16)..((cx + 1) * 16) {
+                    for y in (cy * 16)..((cy + 1) * 16) {
+                        for z in (cz * 16)..((cz + 1) * 16) {
+                            let voxel_coord = Coord::new(x as i64, y as i64, z as i64);
+                            let mut voxel = chunk_store.get_voxel(voxel_coord).unwrap();
 
                             // Right face: +z
-                            if z < 15 {
-                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-
-                                if chunk.get_voxel(x, y, z + 1).data != 0 {
-                                    voxel.metadata |= 0x10000000;
-                                }
-                            } else {
-                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx, cy, cz + 1)).unwrap();
-
-                                if neighbor_chunk.get_voxel(x, y, 0).data != 0 {
-                                    voxel.metadata |= 0x10000000;
-                                }
+                            if chunk_store.get_voxel(voxel_coord + Coord::unit_z()).unwrap().data != 0 {
+                                voxel.metadata |= RIGHT_FACE_METADATA_BIT;
                             }
 
                             // Left face: -z
-                            if z > 0 {
-                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-
-                                if chunk.get_voxel(x, y, z - 1).data != 0 {
-                                    voxel.metadata |= 0x20000000;
-                                }
-                            } else {
-                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx, cy, cz - 1)).unwrap();
-
-                                if neighbor_chunk.get_voxel(x, y, 15).data != 0 {
-                                    voxel.metadata |= 0x20000000;
-                                }
+                            if chunk_store.get_voxel(voxel_coord - Coord::unit_z()).unwrap().data != 0 {
+                                voxel.metadata |= LEFT_FACE_METADATA_BIT;
                             }
 
                             // Front face: +x
-                            if x < 15 {
-                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-
-                                if chunk.get_voxel(x + 1, y, z).data != 0 {
-                                    voxel.metadata |= 0x80000000;
-                                }
-                            } else {
-                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx + 1, cy, cz)).unwrap();
-
-                                if neighbor_chunk.get_voxel(0, y, z).data != 0 {
-                                    voxel.metadata |= 0x80000000;
-                                }
+                            if chunk_store.get_voxel(voxel_coord + Coord::unit_x()).unwrap().data != 0 {
+                                voxel.metadata |= FRONT_FACE_METADATA_BIT;
                             }
 
                             // Back face: -x
-                            if x > 0 {
-                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-
-                                if chunk.get_voxel(x - 1, y, z).data != 0 {
-                                    voxel.metadata |= 0x40000000;
-                                }
-                            } else {
-                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx - 1, cy, cz)).unwrap();
-
-                                if neighbor_chunk.get_voxel(15, y, z).data != 0 {
-                                    voxel.metadata |= 0x40000000;
-                                }
+                            if chunk_store.get_voxel(voxel_coord - Coord::unit_x()).unwrap().data != 0 {
+                                voxel.metadata |= BACK_FACE_METADATA_BIT;
                             }
 
                             // Top face: +y
-                            if y < 15 {
-                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-
-                                if chunk.get_voxel(x, y + 1, z).data != 0 {
-                                    voxel.metadata |= 0x08000000;
-                                }
-                            } else {
-                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx, cy + 1, cz)).unwrap();
-
-                                if neighbor_chunk.get_voxel(x, 0, z).data != 0 {
-                                    voxel.metadata |= 0x08000000;
-                                }
+                            if chunk_store.get_voxel(voxel_coord + Coord::unit_y()).unwrap().data != 0 {
+                                voxel.metadata |= TOP_FACE_METADATA_BIT;
                             }
 
                             // Bottom face: -y
-                            if y > 0 {
-                                let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-
-                                if chunk.get_voxel(x, y - 1, z).data != 0 {
-                                    voxel.metadata |= 0x04000000;
-                                }
-                            } else {
-                                let neighbor_chunk = chunk_store.get_chunk_mut(ChunkCoord::new(cx, cy - 1, cz)).unwrap();
-
-                                if neighbor_chunk.get_voxel(x, 15, z).data != 0 {
-                                    voxel.metadata |= 0x04000000;
-                                }
+                            if chunk_store.get_voxel(voxel_coord - Coord::unit_y()).unwrap().data != 0 {
+                                voxel.metadata |= BOTTOM_FACE_METADATA_BIT;
                             }
 
-                            let chunk = chunk_store.get_chunk_mut(coordinate).unwrap();
-                            chunk.set_voxel(x, y, z, voxel);
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(1, 0, 1)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_P1_00_P1;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(0, 1, 1)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_00_P1_P1;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(1, 1, 1)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_P1_P1_P1;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(-1, 0, 1)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_N1_00_P1;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(-1, 1, 1)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_N1_P1_P1;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(0, -1, 1)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_00_N1_P1;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(1, -1, 1)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_P1_N1_P1;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(-1, -1, 1)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_N1_N1_P1;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(1, 1, 0)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_P1_P1_00;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(1, -1, 0)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_P1_N1_00;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(1, 0, -1)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_P1_00_N1;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(1, 1, -1)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_P1_P1_N1;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(1, -1, -1)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_P1_N1_N1;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(0, 1, -1)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_00_P1_N1;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(0, -1, -1)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_00_N1_N1;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(-1, 0, -1)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_N1_00_N1;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(-1, 1, -1)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_N1_P1_N1;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(-1, -1, -1)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_N1_N1_N1;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(-1, 1, 0)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_N1_P1_00;
+                            }
+
+                            if chunk_store.get_voxel(voxel_coord + Coord::new(-1, -1, 0)).unwrap().data != 0 {
+                                voxel.metadata |= VOXEL_N1_N1_00;
+                            }
+
+                            chunk_store.set_voxel(voxel_coord, voxel).unwrap();
                         }
                     }
                 }

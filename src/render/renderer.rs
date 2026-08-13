@@ -8,7 +8,7 @@ use super::graphics::hal::resources::{ BufferHandles, Resources, WriteModelBuffe
 use super::graphics::hal::frame::{ Frame };
 use super::graphics::hal::job::{ Job };
 use super::graphics::hal::stucts::{ UniformBufferObject, Camera, Voxel };
-use crate::voxels::{ Chunk, ChunkCache, ChunkCoord };
+use crate::voxels::{ Chunk, ChunkCache, Coord };
 use std::sync::Arc;
 
 /*
@@ -32,7 +32,7 @@ impl <T: Context> Renderer<T> {
         self.context.image_extent()
     }
 
-    pub fn render(&mut self, camera: Camera, chunks: &ChunkCache, coords: Vec<ChunkCoord>) -> Result<(), RendererError> {
+    pub fn render(&mut self, camera: Camera, chunks: &ChunkCache, coords: Vec<Coord>) -> Result<(), RendererError> {
         let frame = self.context.next_frame().map_err(|err| {
             println!("Error getting next frame {:?}", err);
             RendererError
