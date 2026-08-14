@@ -2,6 +2,7 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
+use crate::camera::PlayerCamera;
 use crate::render::{
     Voxel,
     UniformBufferObject,
@@ -33,6 +34,7 @@ use crate::render::{
     VOXEL_N1_N1_00
 };
 use crate::voxels::{ Chunk, ChunkCache, Coord };
+use bevy_ecs::system::Res;
 use noise::{ NoiseFn, Perlin, Seedable };
 use bevy_ecs::resource::Resource;
 
@@ -58,6 +60,14 @@ impl VoxelWorld {
 
     pub fn get_visibility(&self) -> Vec<Coord> {
         self.visibility.clone()
+    }
+
+    pub fn clear_visibility(&mut self) {
+        self.visibility.clear();
+    }
+
+    pub fn set_visible(&mut self, coord: Coord) {
+        self.visibility.push(coord);
     }
 }
 

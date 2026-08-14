@@ -3,12 +3,12 @@
  */
 
 use crate::camera::{ PlayerCamera, update_camera_direction, update_camera_position };
-use crate::render::{ RenderContext, Renderer, VulkanContext, render };
-use crate::input::{EngineEvent, InternalAppEvents, KeyboardButtonInput, MouseMotion, SdlContext, update_inputs, update_engine_events};
+use crate::render::{ RenderContext, Renderer, VulkanContext, render, frustum_culling };
+use crate::input::{ EngineEvent, InternalAppEvents, KeyboardButtonInput, MouseMotion, SdlContext, update_inputs, update_engine_events };
 use crate::voxels::{ VoxelWorld };
 
-use bevy_ecs::message::{MessageRegistry, message_update_system};
-use bevy_ecs::schedule::Schedule;
+use bevy_ecs::message::{ MessageRegistry, message_update_system };
+use bevy_ecs::schedule::{ IntoScheduleConfigs, Schedule };
 use bevy_ecs::world::World;
 use sdl3::video::WindowFlags;
 use std::sync::{Arc};
@@ -56,18 +56,27 @@ fn main() {
     world.insert_non_send(RenderContext::new(renderer));
     world.insert_resource(PlayerCamera::new());
     world.insert_resource(KeyboardButtonInput::new());
-    world.insert_resource(VoxelWorld::new(25, 10));
+    world.insert_resource(VoxelWorld::new(20, 10));
     world.insert_resource(InternalAppEvents::new());
     MessageRegistry::register_message::<MouseMotion>(&mut world);
     MessageRegistry::register_message::<EngineEvent>(&mut world);
 
-    let mut update = Schedule::default();
-    update.add_systems(update_engine_events);
-    update.add_systems(message_update_system);
-    update.add_systems(update_camera_position);
-    update.add_systems(update_camera_direction);
-    update.add_systems(update_inputs);
-    update.add_systems(render);
+    let mut input_schedule = Schedule::default();
+    input_schedule.add_systems((
+        update_inputs,
+        message_update_system.after(update_inputs),
+        update_engine_events.after(message_update_system)
+    ));
+
+    let mut update_schedule = Schedule::default();
+    update_schedule.add_systems(update_camera_position);
+    update_schedule.add_systems(update_camera_direction);
+
+    let mut render_schedule = Schedule::default();
+    render_schedule.add_systems((
+        render,
+        frustum_culling.before(render)
+    ));
 
     let mut dt = Duration::new(0, 0);
 
@@ -75,7 +84,9 @@ fn main() {
         let start_time = Instant::now();
 
         //println!("Main game loop, previous frame {:?} ", dt);
-        update.run(&mut world);
+        input_schedule.run(&mut world);
+        update_schedule.run(&mut world);
+        render_schedule.run(&mut world);
 
         let mut app_events = world.get_resource_mut::<InternalAppEvents>().unwrap();
         let app_quit = app_events.app_is_quit();

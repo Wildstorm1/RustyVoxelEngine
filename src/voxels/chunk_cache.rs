@@ -18,6 +18,7 @@ pub struct ChunkCache {
     ubos: HashMap<Coord, UniformBufferObject>,
 }
 
+// TODO: Bounds checking, rollover, duplication with voxel world?
 impl ChunkCache {
     pub fn new() -> Self {
         Self {
@@ -33,6 +34,10 @@ impl ChunkCache {
 
     pub fn get_chunk_mut(&mut self, coord: Coord) -> Option<&mut Chunk> {
         self.buffer.get_mut(&coord)
+    }
+
+    pub fn list_chunks(&self) -> Vec<Coord> {
+        self.buffer.keys().copied().collect()
     }
 
     pub fn get_chunk(&self, coord: Coord) -> Option<&Chunk> {

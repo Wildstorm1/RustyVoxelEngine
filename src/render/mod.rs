@@ -39,4 +39,4 @@ pub use graphics::{
     VOXEL_N1_N1_00
 };
 pub use renderer::Renderer;
-pub use system::{ RenderContext, render };
+pub use system::{ RenderContext, render, frustum_culling };
