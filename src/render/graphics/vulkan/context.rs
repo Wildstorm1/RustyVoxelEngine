@@ -95,8 +95,8 @@ impl VulkanContext {
         let mut frame_contexts = Vec::new();
         let mut frames = Vec::new();
 
-        // TODO: Magic 2 for 2 frames in flight
-        for i in 0..2 {
+        // TODO: Magic 2 for 2 frames in flight (switched to 1 because of shared buffer)
+        for i in 0..1 {
             let semaphore_info = vk::SemaphoreCreateInfo {
                 ..Default::default()
             };
