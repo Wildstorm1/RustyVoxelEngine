@@ -138,6 +138,12 @@ pub fn frustum_culling(
             return;
         }
 
+        let chunk = voxels.get_cache().get_chunk(*coord).unwrap();
+
+        if chunk.is_air() {
+            return;
+        }
+
         if chunk_in_frustum(*coord, pvt_matrix) || chunk_nearby_camera(camera_data.position(), *coord) {
             voxels.set_visible(*coord);
         }

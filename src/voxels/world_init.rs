@@ -101,6 +101,8 @@ pub fn world_init(width: usize, height: usize) -> (ChunkCache, Vec<Coord>) {
                             let noise = 0.25f64 * ((plane_value + 1.0f64) / 2.0f64);
 
                             if ((y_pos as f32 / (height * 16) as f32) + noise as f32) < 0.5f32 {
+                                chunk.set_is_air(false);
+
                                 chunk.set_voxel(x, y, z, Voxel {
                                     metadata: 0,
                                     data: 5,
