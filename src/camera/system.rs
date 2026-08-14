@@ -4,6 +4,7 @@
 
 use crate::input::{ KeyCode, KeyboardButtonInput, MouseMotion, SdlContext };
 use crate::render::{ RenderContext, VulkanContext };
+use crate::timer::Timer;
 use bevy_ecs::message::MessageReader;
 use bevy_ecs::resource::Resource;
 use bevy_ecs::system::{ NonSend, NonSendMut, Res, ResMut };
@@ -50,25 +51,26 @@ impl PlayerCamera {
  */
 pub fn update_camera_position(
     keyboard: Res<KeyboardButtonInput>,
-    mut camera: ResMut<PlayerCamera>
+    mut camera: ResMut<PlayerCamera>,
+    timer: Res<Timer>
 ) {
     let camera_front = camera.look_direction();
     let camera_up = camera.up_direction();
 
     if keyboard.is_pressed(KeyCode::KeyW) {
-        camera.pos = camera.pos + (camera_front * 0.2f32);
+        camera.pos = camera.pos + (camera_front * 20.0f32 * timer.dt().as_secs_f32());
     }
 
     if keyboard.is_pressed(KeyCode::KeyS) {
-        camera.pos = camera.pos - (camera_front * 0.2f32);
+        camera.pos = camera.pos - (camera_front * 20.0f32 * timer.dt().as_secs_f32());
     }
 
     if keyboard.is_pressed(KeyCode::KeyA) {
-        camera.pos = camera.pos - (glm::normalize(glm::cross(camera_front, camera_up)) * 0.2f32);
+        camera.pos = camera.pos - (glm::normalize(glm::cross(camera_front, camera_up)) * 20.0f32 * timer.dt().as_secs_f32());
     }
 
     if keyboard.is_pressed(KeyCode::KeyD) {
-        camera.pos = camera.pos + (glm::normalize(glm::cross(camera_front, camera_up)) * 0.2f32);
+        camera.pos = camera.pos + (glm::normalize(glm::cross(camera_front, camera_up)) * 20.0f32 * timer.dt().as_secs_f32());
     }
 }
 

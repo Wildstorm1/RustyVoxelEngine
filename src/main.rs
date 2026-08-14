@@ -6,6 +6,7 @@ use crate::camera::{ PlayerCamera, update_camera_direction, update_camera_positi
 use crate::render::{ RenderContext, Renderer, VulkanContext, render, frustum_culling };
 use crate::input::{ EngineEvent, InternalAppEvents, KeyboardButtonInput, MouseMotion, SdlContext, update_inputs, update_engine_events };
 use crate::voxels::{ VoxelWorld };
+use crate::timer::Timer;
 
 use bevy_ecs::message::{ MessageRegistry, message_update_system };
 use bevy_ecs::schedule::{ IntoScheduleConfigs, Schedule };
@@ -14,6 +15,7 @@ use sdl3::video::WindowFlags;
 use std::sync::{Arc};
 use std::time::{Duration, Instant};
 
+mod timer;
 mod render;
 mod camera;
 mod input;
@@ -56,8 +58,9 @@ fn main() {
     world.insert_non_send(RenderContext::new(renderer));
     world.insert_resource(PlayerCamera::new());
     world.insert_resource(KeyboardButtonInput::new());
-    world.insert_resource(VoxelWorld::new(20, 10));
+    world.insert_resource(VoxelWorld::new(50, 10));
     world.insert_resource(InternalAppEvents::new());
+    world.insert_resource(Timer::new());
     MessageRegistry::register_message::<MouseMotion>(&mut world);
     MessageRegistry::register_message::<EngineEvent>(&mut world);
 
@@ -77,8 +80,6 @@ fn main() {
         render,
         frustum_culling.before(render)
     ));
-
-    let mut dt = Duration::new(0, 0);
 
     'running: loop {
         let start_time = Instant::now();
@@ -104,6 +105,7 @@ fn main() {
         }
 
         let end_time = Instant::now();
-        dt = end_time.duration_since(start_time);
+        let mut timer = world.get_resource_mut::<Timer>().unwrap();
+        timer.update(end_time.duration_since(start_time));
     }
 }
