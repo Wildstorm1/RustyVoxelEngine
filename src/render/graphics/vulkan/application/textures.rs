@@ -15,6 +15,15 @@ struct BufferData {
 }
 
 #[derive(Clone, Copy)]
+struct TextureLayer {
+    buffer: vk::Buffer,
+    memory: vk::DeviceMemory,
+    width: u32,
+    height: u32,
+    size: u64
+}
+
+#[derive(Clone, Copy)]
 struct ImageData {
     image: vk::Image,
     memory: vk::DeviceMemory,
@@ -112,7 +121,7 @@ fn create_texture_image(
             height: height,
             depth: 1,
         },
-        mip_levels: 1,
+        mip_levels: 3,
         array_layers: 1,
         format: vk::Format::R8G8B8A8_SRGB,
         tiling: vk::ImageTiling::OPTIMAL,
@@ -164,7 +173,8 @@ fn transfer_texture_to_gpu(
     width: u32,
     height: u32,
     texture_image: vk::Image,
-    image_buffer: vk::Buffer
+    image_buffer: vk::Buffer,
+    mip_level: u32
 ) -> Result<(), TextureError> {
     let alloc_info = vk::CommandBufferAllocateInfo {
         level: vk::CommandBufferLevel::PRIMARY,
@@ -196,7 +206,7 @@ fn transfer_texture_to_gpu(
         image: texture_image,
         subresource_range: vk::ImageSubresourceRange {
             aspect_mask: vk::ImageAspectFlags::COLOR,
-            base_mip_level: 0,
+            base_mip_level: mip_level,
             level_count: 1,
             base_array_layer: 0,
             layer_count: 1,
@@ -222,7 +232,7 @@ fn transfer_texture_to_gpu(
         buffer_image_height: 0,
         image_subresource: vk::ImageSubresourceLayers {
             aspect_mask: vk::ImageAspectFlags::COLOR,
-            mip_level: 0,
+            mip_level: mip_level,
             base_array_layer: 0,
             layer_count: 1,
         },
@@ -255,7 +265,7 @@ fn transfer_texture_to_gpu(
         image: texture_image,
         subresource_range: vk::ImageSubresourceRange {
             aspect_mask: vk::ImageAspectFlags::COLOR,
-            base_mip_level: 0,
+            base_mip_level: mip_level,
             level_count: 1,
             base_array_layer: 0,
             layer_count: 1,
@@ -312,7 +322,7 @@ fn create_texture_image_view(
         subresource_range: vk::ImageSubresourceRange {
             aspect_mask: vk::ImageAspectFlags::COLOR,
             base_mip_level: 0,
-            level_count: 1,
+            level_count: 3,
             base_array_layer: 0,
             layer_count: 1,
         },
@@ -347,7 +357,7 @@ fn create_texture_sampler(
         mipmap_mode: vk::SamplerMipmapMode::NEAREST,
         mip_lod_bias: 0.0f32,
         min_lod: 0.0f32,
-        max_lod: 0.0f32,
+        max_lod: vk::LOD_CLAMP_NONE,
         ..Default::default()
     };
 
@@ -386,50 +396,97 @@ fn bind_texture_to_descriptor_set(
     Ok(())
 }
 
+fn read_texture_to_buffer(
+    device: &VulkanDevice,
+    path: String
+) -> Result<TextureLayer, TextureError> {
+    let reader = ImageReader::open(path).map_err(|err| {
+        println!("Could not open texture atlas l0! {}", err);
+        TextureError
+    })?;
+
+    let image = reader.decode().map_err(|err| {
+        println!("Could not read texture atlas l0! {}", err);
+        TextureError
+    })?;
+
+    let (width, height) = image.dimensions();
+    let image_size = width as u64 * height as u64 * 4;
+
+    let buffer = create_buffer(
+        &device,
+        image_size,
+        vk::BufferUsageFlags::TRANSFER_SRC,
+        vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT
+    )?;
+
+    let cpu_texture = unsafe { device.device.map_memory(buffer.memory, 0, image_size, vk::MemoryMapFlags::empty()).map_err(|err| {
+        println!("Error mapping texture memory to cpu space {}", err);
+        TextureError
+    }) }? as *mut u8;
+
+    unsafe { std::ptr::copy_nonoverlapping(image.as_bytes().as_ptr(), cpu_texture, image_size as usize) };
+
+    unsafe { device.device.unmap_memory(buffer.memory) };
+
+    Ok(TextureLayer {
+        buffer: buffer.buffer,
+        memory: buffer.memory,
+        width: width,
+        height: height,
+        size: image_size
+    })
+}
+
 impl VulkanTextures {
     pub fn new(device: Arc<VulkanDevice>) -> Result<Self, TextureError> {
-        let reader = ImageReader::open("./assets/voxels_l0.png").map_err(|err| {
-            println!("Could not open texture atlas l0! {}", err);
-            TextureError
-        })?;
-
-        let image = reader.decode().map_err(|err| {
-            println!("Could not read texture atlas l0! {}", err);
-            TextureError
-        })?;
-
-        let (width, height) = image.dimensions();
-        let image_size = width as u64 * height as u64 * 4;
-
-        let buffer = create_buffer(
-            &device,
-            image_size,
-            vk::BufferUsageFlags::TRANSFER_SRC,
-            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT
-        )?;
-
-        let cpu_texture = unsafe { device.device.map_memory(buffer.memory, 0, image_size, vk::MemoryMapFlags::empty()).map_err(|err| {
-            println!("Error mapping texture memory to cpu space {}", err);
-            TextureError
-        }) }? as *mut u8;
-
-        unsafe { std::ptr::copy_nonoverlapping(image.as_bytes().as_ptr(), cpu_texture, image_size as usize) };
-
-        unsafe { device.device.unmap_memory(buffer.memory) };
-
-        let texture = create_texture_image(&device, width, height)?;
+        let layer_0_mip = read_texture_to_buffer(&device, "./assets/voxels_l0.png".to_owned())?;
+        let texture = create_texture_image(&device, layer_0_mip.width, layer_0_mip.height)?;
 
         transfer_texture_to_gpu(
             &device,
-            width,
-            height,
+            layer_0_mip.width,
+            layer_0_mip.height,
             texture.image,
-            buffer.buffer
+            layer_0_mip.buffer,
+            0
         )?;
 
         unsafe {
-            device.device.destroy_buffer(buffer.buffer, None);
-            device.device.free_memory(buffer.memory, None);
+            device.device.destroy_buffer(layer_0_mip.buffer, None);
+            device.device.free_memory(layer_0_mip.memory, None);
+        }
+
+        let layer_1_mip = read_texture_to_buffer(&device, "./assets/voxels_l1.png".to_owned())?;
+
+        transfer_texture_to_gpu(
+            &device,
+            layer_1_mip.width,
+            layer_1_mip.height,
+            texture.image,
+            layer_1_mip.buffer,
+            1
+        )?;
+
+        unsafe {
+            device.device.destroy_buffer(layer_1_mip.buffer, None);
+            device.device.free_memory(layer_1_mip.memory, None);
+        }
+
+        let layer_2_mip = read_texture_to_buffer(&device, "./assets/voxels_l2.png".to_owned())?;
+
+        transfer_texture_to_gpu(
+            &device,
+            layer_2_mip.width,
+            layer_2_mip.height,
+            texture.image,
+            layer_2_mip.buffer,
+            2
+        )?;
+
+        unsafe {
+            device.device.destroy_buffer(layer_2_mip.buffer, None);
+            device.device.free_memory(layer_2_mip.memory, None);
         }
 
         let image_view = create_texture_image_view(&device, texture.image)?;
