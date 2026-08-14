@@ -121,7 +121,7 @@ fn create_texture_image(
             height: height,
             depth: 1,
         },
-        mip_levels: 3,
+        mip_levels: 5,
         array_layers: 1,
         format: vk::Format::R8G8B8A8_SRGB,
         tiling: vk::ImageTiling::OPTIMAL,
@@ -322,7 +322,7 @@ fn create_texture_image_view(
         subresource_range: vk::ImageSubresourceRange {
             aspect_mask: vk::ImageAspectFlags::COLOR,
             base_mip_level: 0,
-            level_count: 3,
+            level_count: 5,
             base_array_layer: 0,
             layer_count: 1,
         },
@@ -457,36 +457,22 @@ impl VulkanTextures {
             device.device.free_memory(layer_0_mip.memory, None);
         }
 
-        let layer_1_mip = read_texture_to_buffer(&device, "./assets/voxels_l1.png".to_owned())?;
+        for i in 1..5 {
+            let layer_i_mip = read_texture_to_buffer(&device, format!("./assets/voxels_l{}.png", i))?;
 
-        transfer_texture_to_gpu(
-            &device,
-            layer_1_mip.width,
-            layer_1_mip.height,
-            texture.image,
-            layer_1_mip.buffer,
-            1
-        )?;
+            transfer_texture_to_gpu(
+                &device,
+                layer_i_mip.width,
+                layer_i_mip.height,
+                texture.image,
+                layer_i_mip.buffer,
+                i
+            )?;
 
-        unsafe {
-            device.device.destroy_buffer(layer_1_mip.buffer, None);
-            device.device.free_memory(layer_1_mip.memory, None);
-        }
-
-        let layer_2_mip = read_texture_to_buffer(&device, "./assets/voxels_l2.png".to_owned())?;
-
-        transfer_texture_to_gpu(
-            &device,
-            layer_2_mip.width,
-            layer_2_mip.height,
-            texture.image,
-            layer_2_mip.buffer,
-            2
-        )?;
-
-        unsafe {
-            device.device.destroy_buffer(layer_2_mip.buffer, None);
-            device.device.free_memory(layer_2_mip.memory, None);
+            unsafe {
+                device.device.destroy_buffer(layer_i_mip.buffer, None);
+                device.device.free_memory(layer_i_mip.memory, None);
+            }
         }
 
         let image_view = create_texture_image_view(&device, texture.image)?;
