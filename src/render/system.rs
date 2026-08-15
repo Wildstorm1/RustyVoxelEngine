@@ -134,7 +134,7 @@ pub fn frustum_culling(
             return;
         }
 
-        if coord.x() >= 50 - 1 || coord.y() >= 50 - 1 || coord.z() >= 50 - 1 {
+        if coord.x() >= 10 - 1 || coord.y() >= 10 - 1 || coord.z() >= 10 - 1 {
             return;
         }
 

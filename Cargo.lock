@@ -1446,7 +1446,7 @@ checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 
 [[package]]
 name = "rusty_presto"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "ash",
  "bevy_ecs",
