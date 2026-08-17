@@ -2,11 +2,13 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
+use bevy_ecs::component::Component;
 use crate::render::Voxel;
 
 /*
  * Chunk of voxel data
  */
+#[derive(Component)]
 pub struct Chunk {
     is_all_air: bool,
     buffer: Vec<Voxel>,

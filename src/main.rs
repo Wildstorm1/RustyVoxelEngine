@@ -3,9 +3,9 @@
  */
 
 use crate::camera::{ PlayerCamera, update_camera_direction, update_camera_position };
-use crate::render::{ RenderContext, Renderer, VulkanContext, render, frustum_culling };
+use crate::render::{ RenderContext, VulkanContext, render };
 use crate::input::{ EngineEvent, InternalAppEvents, KeyboardButtonInput, MouseMotion, SdlContext, update_inputs, update_engine_events };
-use crate::voxels::{ VoxelWorld };
+use crate::voxels::{ VoxelMapSettings, generate_initial_chunks };
 use crate::timer::Timer;
 
 use bevy_ecs::message::{ MessageRegistry, message_update_system };
@@ -20,6 +20,7 @@ mod render;
 mod camera;
 mod input;
 mod voxels;
+mod transform;
 
 fn main() {
     let mut world = World::new();
@@ -40,14 +41,12 @@ fn main() {
     );
 
     let context = match VulkanContext::new(window.clone()) {
-        Ok(context) => Box::new(context),
+        Ok(context) => context,
         Err(err) => {
             println!("Error setting up context {:?}", err);
             return;
         }
     };
-
-    let mut renderer = Renderer::new(context);
 
     world.insert_non_send(SdlContext::new(
         sdl_context,
@@ -55,14 +54,17 @@ fn main() {
         event_pump
     ));
 
-    world.insert_non_send(RenderContext::new(renderer));
+    world.insert_non_send(RenderContext::new(context));
     world.insert_resource(PlayerCamera::new());
     world.insert_resource(KeyboardButtonInput::new());
-    world.insert_resource(VoxelWorld::new(10, 10));
+    world.insert_resource(VoxelMapSettings::new(10, 10));
     world.insert_resource(InternalAppEvents::new());
     world.insert_resource(Timer::new());
     MessageRegistry::register_message::<MouseMotion>(&mut world);
     MessageRegistry::register_message::<EngineEvent>(&mut world);
+
+    let mut init_schedule = Schedule::default();
+    init_schedule.add_systems(generate_initial_chunks);
 
     let mut input_schedule = Schedule::default();
     input_schedule.add_systems((
@@ -73,18 +75,18 @@ fn main() {
 
     let mut update_schedule = Schedule::default();
     update_schedule.add_systems(update_camera_position);
-    update_schedule.add_systems(update_camera_direction);
+    update_schedule.add_systems(update_camera_direction::<VulkanContext>);
 
     let mut render_schedule = Schedule::default();
     render_schedule.add_systems((
-        render,
-        frustum_culling.before(render)
+        render::<VulkanContext>,
     ));
+
+    init_schedule.run(&mut world);
 
     'running: loop {
         let start_time = Instant::now();
 
-        //println!("Main game loop, previous frame {:?} ", dt);
         input_schedule.run(&mut world);
         update_schedule.run(&mut world);
         render_schedule.run(&mut world);
@@ -94,7 +96,7 @@ fn main() {
         let window_recreate = app_events.app_needs_window_recreate();
         app_events.reset();
 
-        let mut render_resource = world.get_non_send_mut::<RenderContext>().unwrap();
+        let mut render_resource = world.get_non_send_mut::<RenderContext<VulkanContext>>().unwrap();
 
         if app_quit {
             break 'running

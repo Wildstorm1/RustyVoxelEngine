@@ -5,9 +5,11 @@
 pub mod chunk;
 pub mod chunk_cache;
 pub mod coord;
-mod world_init;
+pub mod system;
+pub mod resource;
 
 pub use chunk::{ Chunk };
 pub use chunk_cache::{ ChunkCache };
 pub use coord::{ Coord };
-pub use world_init::{ VoxelWorld };
+pub use resource::{ VoxelMapSettings };
+pub use system::{ generate_initial_chunks };

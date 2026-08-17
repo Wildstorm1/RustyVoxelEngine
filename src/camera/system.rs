@@ -3,7 +3,7 @@
  */
 
 use crate::input::{ KeyCode, KeyboardButtonInput, MouseMotion, SdlContext };
-use crate::render::{ RenderContext, VulkanContext };
+use crate::render::{ Context, RenderContext };
 use crate::timer::Timer;
 use bevy_ecs::message::MessageReader;
 use bevy_ecs::resource::Resource;
@@ -78,10 +78,10 @@ pub fn update_camera_position(
  * System look for movement of the mouse and updates the yaw/pitch
  * of the camera accordingly
  */
-pub fn update_camera_direction(
+pub fn update_camera_direction<T: Context>(
     mut sdl_context: NonSendMut<SdlContext>,
     keyboard: Res<KeyboardButtonInput>,
-    render_context: NonSend<RenderContext>,
+    render_context: NonSend<RenderContext<T>>,
     mut reader: MessageReader<MouseMotion>,
     mut camera: ResMut<PlayerCamera>
 ) {

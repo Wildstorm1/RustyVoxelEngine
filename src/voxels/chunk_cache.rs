@@ -15,7 +15,6 @@ pub struct ChunkCacheError;
 
 pub struct ChunkCache {
     buffer: HashMap<Coord, Chunk>,
-    ubos: HashMap<Coord, UniformBufferObject>,
 }
 
 // TODO: Bounds checking, rollover, duplication with voxel world?
@@ -23,13 +22,15 @@ impl ChunkCache {
     pub fn new() -> Self {
         Self {
             buffer: HashMap::new(),
-            ubos: HashMap::new()
         }
     }
 
-    pub fn cache(&mut self, coord: Coord, chunk: Chunk, ubo: UniformBufferObject) {
+    pub fn cache(&mut self, coord: Coord, chunk: Chunk) {
         self.buffer.insert(coord, chunk);
-        self.ubos.insert(coord, ubo);
+    }
+
+    pub fn remove_chunk(&mut self, coord: Coord) -> Option<Chunk> {
+        self.buffer.remove(&coord)
     }
 
     pub fn get_chunk_mut(&mut self, coord: Coord) -> Option<&mut Chunk> {
@@ -42,10 +43,6 @@ impl ChunkCache {
 
     pub fn get_chunk(&self, coord: Coord) -> Option<&Chunk> {
         self.buffer.get(&coord)
-    }
-
-    pub fn get_ubo(&self, coord: Coord) -> Option<&UniformBufferObject> {
-        self.ubos.get(&coord)
     }
 
     pub fn get_voxel(&self, coord: Coord) -> Option<Voxel> {
