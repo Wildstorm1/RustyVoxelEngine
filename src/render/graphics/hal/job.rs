@@ -6,11 +6,19 @@ use super::resources::{ Resources };
 use super::command_buffer::{ CommandBuffer };
 use std::sync::Arc;
 
+#[derive(Debug)]
+pub enum JobErrorCode {
+    GENERIC,
+    WINDOW_RESIZE,
+}
+
 /*
  * Simple struct for frame errors
  */
 #[derive(Debug)]
-pub struct JobError;
+pub struct JobError {
+    pub error: JobErrorCode,
+}
 
 pub trait Job {
     /*

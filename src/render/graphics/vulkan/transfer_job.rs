@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use super::super::hal::job::{ Job, JobError };
+use super::super::hal::job::{ Job, JobError, JobErrorCode };
 use super::hardware::device::{ VulkanDevice };
 use super::transfer_buffer::{ VulkanTransferCommandBuffer };
 use super::frame_resources::{ VulkanFrameResources };
@@ -37,7 +37,7 @@ impl VulkanTransferJob {
             Ok(buffers) => buffers,
             Err(err) => {
                 println!("Error allocating frame command buffer {}", err);
-                return Err(JobError);
+                return Err(JobError { error: JobErrorCode::GENERIC });
             }
         };
 
@@ -66,14 +66,14 @@ impl Job for VulkanTransferJob {
             self.resources.clone()
         ).map_err(|err| {
             println!("Error creating command buffer {}", err);
-            JobError
+            JobError { error: JobErrorCode::GENERIC }
         })
     }
 
     fn submit_command_buffer(&self, buffer: Self::T) -> Result<(), JobError> {
         let mut submitted_buffers = self.submitted_command_buffers.lock().map_err(|err| {
             println!("Mutex on command buffer is poisoned {}", err);
-            JobError
+            JobError { error: JobErrorCode::GENERIC }
         })?;
 
         submitted_buffers.push(buffer.command_buffer);
@@ -84,7 +84,7 @@ impl Job for VulkanTransferJob {
     fn begin_job(&self) -> Result<(), JobError> {
         unsafe { self.device.device.reset_command_buffer(self.sync_command_buffer, vk::CommandBufferResetFlags::empty()).map_err(|err| {
             println!("Error resetting command buffer {}", err);
-            JobError
+            JobError { error: JobErrorCode::GENERIC }
         }) }?;
 
         let begin_info = vk::CommandBufferBeginInfo {
@@ -93,7 +93,7 @@ impl Job for VulkanTransferJob {
 
         unsafe { self.device.device.begin_command_buffer(self.sync_command_buffer, &begin_info).map_err(|err| {
             println!("Error beginning command buffer {}", err);
-            JobError
+            JobError { error: JobErrorCode::GENERIC }
         }) }?;
 
         Ok(())
@@ -102,14 +102,14 @@ impl Job for VulkanTransferJob {
     fn end_job(&self) -> Result<(), JobError> {
         let submitted_command_buffers_guard = self.submitted_command_buffers.lock().map_err(|err| {
             println!("Mutex on submitted command buffer is poisoned {}", err);
-            JobError
+            JobError { error: JobErrorCode::GENERIC }
         })?;
 
         unsafe { self.device.device.cmd_execute_commands(self.sync_command_buffer, &submitted_command_buffers_guard) };
 
         unsafe { self.device.device.end_command_buffer(self.sync_command_buffer).map_err(|err| {
             println!("Error ending transfer command buffer {}", err);
-            JobError
+            JobError { error: JobErrorCode::GENERIC }
         }) }?;
 
         Ok(())
@@ -129,7 +129,7 @@ impl Job for VulkanTransferJob {
 
         unsafe { self.device.device.queue_submit(self.device.queues.graphics_queue, &[submit_info], vk::Fence::null()).map_err(|err| {
             println!("Error submitting command buffer to queue {}", err);
-            JobError
+            JobError { error: JobErrorCode::GENERIC }
         }) }?;
 
         Ok(())

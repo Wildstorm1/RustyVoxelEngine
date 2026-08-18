@@ -5,9 +5,10 @@
 use bevy_ecs::system::{ NonSendMut, Query, Res, ResMut };
 use glm::{GenMat, Matrix4, Vector3};
 use crate::camera::PlayerCamera;
+use crate::input::InternalAppEvents;
 use crate::render::graphics::hal::command_buffer::{CommandBuffer, CopyBufferPacket, DrawPacket};
 use crate::render::graphics::hal::frame::Frame;
-use crate::render::graphics::hal::job::Job;
+use crate::render::graphics::hal::job::{Job, JobErrorCode};
 use crate::render::graphics::hal::resources::{BufferHandles, Resources, WriteModelBuffer, WriteVoxelBuffer};
 use crate::render::{ Context, UniformBufferObject, Voxel, VulkanContext };
 use crate::render::graphics::Camera;
@@ -167,6 +168,7 @@ fn translation_to_ubo(
  */
 pub fn render<T: Context>(
     mut render_context: NonSendMut<RenderContext<T>>,
+    mut app_event: ResMut<InternalAppEvents>,
     mut camera_data: Res<PlayerCamera>,
     renderables: Query<(&Transform, &Chunk)>
 ) {
@@ -258,7 +260,20 @@ pub fn render<T: Context>(
     draw_command_buffer.stage().unwrap();
     draw_job.submit_command_buffer(draw_command_buffer).unwrap();
     draw_job.end_job().unwrap();
-    draw_job.run_job().unwrap();
+
+    match draw_job.run_job() {
+        Ok(_) => {},
+        Err(err) => {
+            match err.error {
+                JobErrorCode::WINDOW_RESIZE => {
+                    app_event.recreate_window()
+                },
+                _ => panic!("Draw job failed to run"),
+            }
+        }
+        _ => panic!("Draw job failed to run"),
+    }
+
     frame.submit_draw_job(draw_job).unwrap();
 
     /* ---------------------------------------------------------------------------------------------------- */
