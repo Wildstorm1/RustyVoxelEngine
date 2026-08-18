@@ -14,7 +14,7 @@ use crate::render::{ Context, UniformBufferObject, Voxel, VulkanContext };
 use crate::render::graphics::Camera;
 use crate::render::graphics::hal::context::ImageExtent;
 use crate::transform::Transform;
-use crate::voxels::{Chunk, Coord};
+use crate::voxels::{Chunk, Coord, Size};
 
 /*
  * Simple struct for renderer errors

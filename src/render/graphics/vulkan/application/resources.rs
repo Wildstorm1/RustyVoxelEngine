@@ -171,11 +171,13 @@ fn bind_buffer_to_descriptor_set(
     descriptor_set: vk::DescriptorSet,
     buffer: vk::Buffer
 ) {
-    // TODO: Chunk size
+    // TODO: Maximum chunk size is 32 x 32. This defines a "window" available to the
+    // start of the dynamic offset, but not all the data needs to be indexed (ie, size
+    // determines the sub-array to actually index into)
     let buffer_info = vk::DescriptorBufferInfo {
         buffer: buffer,
         offset: 0,
-        range: std::mem::size_of::<Voxel>() as u64 * 16 * 16 * 16,
+        range: std::mem::size_of::<Voxel>() as u64 * 32 * 32 * 32,
         ..Default::default()
     };
 

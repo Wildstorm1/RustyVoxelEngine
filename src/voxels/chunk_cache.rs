@@ -4,7 +4,7 @@
 
 use crate::render::{  UniformBufferObject, Voxel };
 use super::coord::Coord;
-use super::chunk::Chunk;
+use super::component::Chunk;
 use std::collections::HashMap;
 
 /*

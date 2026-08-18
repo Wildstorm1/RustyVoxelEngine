@@ -38,7 +38,7 @@ use crate::render::{
 };
 use crate::timer::Timer;
 use crate::transform::Transform;
-use crate::voxels::{Chunk, ChunkCache, Coord, VoxelMapSettings};
+use crate::voxels::{ Chunk, Size, ChunkCache, Coord, VoxelMapSettings };
 
 fn fill_map_chunk(
     noise: &Perlin,
@@ -46,7 +46,7 @@ fn fill_map_chunk(
     world_depth: f32,
     chunk_size: usize
 ) -> Chunk {
-    let mut chunk = Chunk::new();
+    let mut chunk = Chunk::new(Size::new(16, 16, 16));
 
     for x in 0..chunk_size {
         for z in 0..chunk_size {
