@@ -157,7 +157,8 @@ fn translation_to_ubo(
     );
 
     UniformBufferObject {
-        model: model_matrix
+        model: model_matrix,
+        size: glm::vec3(16.0, 16.0, 16.0)
     }
 }
 

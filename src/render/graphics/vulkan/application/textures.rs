@@ -340,8 +340,6 @@ fn create_texture_image_view(
 fn create_texture_sampler(
     device: &VulkanDevice,
 ) -> Result<vk::Sampler, TextureError> {
-    let properties = unsafe { device.instance.instance.get_physical_device_properties(device.physical_device) };
-
     let sampler_info = vk::SamplerCreateInfo {
         mag_filter: vk::Filter::NEAREST,
         min_filter: vk::Filter::NEAREST,
@@ -349,7 +347,7 @@ fn create_texture_sampler(
         address_mode_v: vk::SamplerAddressMode::REPEAT,
         address_mode_w: vk::SamplerAddressMode::REPEAT,
         anisotropy_enable: vk::TRUE,
-        max_anisotropy: properties.limits.max_sampler_anisotropy,
+        max_anisotropy: device.properties.max_sampler_anisotropy,
         border_color: vk::BorderColor::INT_OPAQUE_BLACK,
         unnormalized_coordinates: vk::FALSE,
         compare_enable: vk::FALSE,

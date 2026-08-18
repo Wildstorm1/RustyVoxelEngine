@@ -109,7 +109,7 @@ fn push_draw(
             0,
             &[ descriptor_set ],
             &[
-                packet.model_uniform_index as u32 * size_of::<UniformBufferObject>() as u32,
+                packet.model_uniform_index as u32 * device.derived_properties.ubo_alignment_size as u32,
                 packet.chunk_index as u32 * 16 * 16 * 16 * size_of::<Voxel>() as u32
             ]
         );

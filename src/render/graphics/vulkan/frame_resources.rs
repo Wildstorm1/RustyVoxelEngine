@@ -70,10 +70,10 @@ impl Resources for VulkanFrameResources {
     }
 
     unsafe fn buffer_model_data_cpu_side(&self, args: WriteModelBuffer) -> Result<(), ResourcesError> {
-        let uniform_buffer_start= self.resources.get_vulkan_uniform_pointer(UniformHandles::ModelsCPU)? as *mut UniformBufferObject;
-        let uniform_slot = unsafe { uniform_buffer_start.add(args.offset) };
+        let uniform_buffer_start= self.resources.get_vulkan_uniform_pointer(UniformHandles::ModelsCPU)? as *mut u8;
+        let uniform_slot = unsafe { uniform_buffer_start.add(args.offset * self.device.derived_properties.ubo_alignment_size) };
 
-        unsafe { *uniform_slot = args.model };
+        unsafe { *(uniform_slot as *mut UniformBufferObject) = args.model };
 
         Ok(())
     }

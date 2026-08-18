@@ -10,6 +10,15 @@
 
 layout(local_size_x = 1) in;
 
+layout(set = 0, binding = 0) uniform UniformBufferObject {
+    mat4 model;
+    vec3 size;
+} ubo;
+
 void main() {
-    EmitMeshTasksEXT(16, 16, 16);
+    EmitMeshTasksEXT(
+        uint(ubo.size.x),
+        uint(ubo.size.y),
+        uint(ubo.size.z)
+    );
 }

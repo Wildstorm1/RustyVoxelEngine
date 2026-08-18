@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use glm::{ Matrix4 };
+use glm::{ Matrix4, Vector3 };
 
 pub const RIGHT_FACE_METADATA_BIT: u32 = 0x10000000;
 pub const LEFT_FACE_METADATA_BIT: u32 = 0x20000000;
@@ -42,6 +42,7 @@ pub struct Voxel {
 #[repr(C)]
 pub struct UniformBufferObject {
     pub model: Matrix4<f32>,
+    pub size: Vector3<f32>,
 }
 
 #[derive(Clone, Copy)]

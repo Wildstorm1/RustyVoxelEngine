@@ -3,6 +3,7 @@
  */
 
 use super::instance::{VulkanInstance};
+use super::super::super::hal::stucts::{ UniformBufferObject };
 use std::collections::{HashMap, HashSet};
 use std::ffi::{CStr, CString, c_void};
 use std::sync::{Arc};
@@ -34,6 +35,23 @@ pub struct DeviceQueueMetadata {
 }
 
 /*
+ * Cache of properties
+ */
+#[derive(Debug, Clone, Copy)]
+pub struct DeviceProperties {
+    pub min_uniform_buffer_offset_alignment: u64,
+    pub max_sampler_anisotropy: f32,
+}
+
+/*
+ * Cache of derived properties that are more game-centric
+ */
+#[derive(Debug, Clone, Copy)]
+pub struct DerivedProperties {
+    pub ubo_alignment_size: usize,
+}
+
+/*
  * App specific device wrapper around vulkan
  */
 pub struct VulkanDevice {
@@ -48,6 +66,41 @@ pub struct VulkanDevice {
     pub descriptor_pool: vk::DescriptorPool,
     pub descriptor_set_layout: vk::DescriptorSetLayout,
     pub descriptor_sets: Vec<vk::DescriptorSet>,
+    pub properties: DeviceProperties,
+    pub derived_properties: DerivedProperties,
+}
+
+fn get_ubo_alignment(
+    properties: DeviceProperties,
+) -> usize {
+    let min_alignment = properties.min_uniform_buffer_offset_alignment as usize;
+    let mut aligned_size = size_of::<UniformBufferObject>() as usize;
+
+    if min_alignment > 0 {
+        aligned_size = (aligned_size + min_alignment + 1) & !(min_alignment - 1);
+    }
+
+    return aligned_size;
+}
+
+fn derived_properties(
+    properties: DeviceProperties,
+) -> DerivedProperties {
+    DerivedProperties {
+        ubo_alignment_size: get_ubo_alignment(properties),
+    }
+}
+
+fn device_properties(
+    instance: &VulkanInstance,
+    device_handle: vk::PhysicalDevice,
+) -> DeviceProperties {
+    let properties = unsafe { instance.instance.get_physical_device_properties(device_handle) };
+
+    DeviceProperties {
+        min_uniform_buffer_offset_alignment: properties.limits.min_uniform_buffer_offset_alignment,
+        max_sampler_anisotropy: properties.limits.max_sampler_anisotropy,
+    }
 }
 
 fn device_supports_extensions(
@@ -270,7 +323,7 @@ fn create_descriptor_set_resources(
         binding: 0,
         descriptor_type: vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
         descriptor_count: 1,
-        stage_flags: vk::ShaderStageFlags::MESH_EXT,
+        stage_flags: vk::ShaderStageFlags::MESH_EXT | vk::ShaderStageFlags::TASK_EXT,
         ..Default::default()
     };
 
@@ -457,6 +510,12 @@ impl VulkanDevice {
 
         let mesh_shader_device = ext::mesh_shader::Device::new(&instance.instance, &logical_device);
 
+        let cached_properties = device_properties(&instance, best_device_handle);
+
+        let cached_derived_properties = derived_properties(cached_properties);
+
+        println!("Device Properties: \n{:?} \n\n Derived Properties: \n{:?}", cached_properties, cached_derived_properties);
+
         Ok ( Self {
             instance: instance,
             physical_device: best_device_handle,
@@ -474,6 +533,8 @@ impl VulkanDevice {
             descriptor_pool: descriptor_pool,
             descriptor_set_layout: descriptor_set_layout,
             descriptor_sets: descriptor_sets,
+            properties: cached_properties,
+            derived_properties: cached_derived_properties,
         } )
     }
 }
