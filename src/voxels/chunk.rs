@@ -33,12 +33,12 @@ impl Chunk {
     }
 
     pub fn get_voxel(&self, x: usize, y: usize, z: usize) -> Voxel {
-        let index = x * 16 * 16 + y * 16 + z;
+        let index = y * 16 * 16 + z * 16 + x;
         self.buffer[index]
     }
 
     pub fn set_voxel(&mut self, x: usize, y: usize, z: usize, voxel: Voxel) {
-        let index = x * 16 * 16 + y * 16 + z;
+        let index = y * 16 * 16 + z * 16 + x;
         self.buffer[index] = voxel;
     }
 

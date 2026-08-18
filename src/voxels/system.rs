@@ -2,7 +2,9 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use bevy_ecs::system::{ Commands, Res };
+use std::f32;
+
+use bevy_ecs::system::{ Commands, Query, Res };
 use glm::Vector3;
 use noise::{ NoiseFn, Perlin };
 use crate::render::{
@@ -34,6 +36,7 @@ use crate::render::{
     VOXEL_N1_P1_00,
     VOXEL_N1_N1_00
 };
+use crate::timer::Timer;
 use crate::transform::Transform;
 use crate::voxels::{Chunk, ChunkCache, Coord, VoxelMapSettings};
 
@@ -283,5 +286,20 @@ pub fn generate_initial_chunks(
                 scale: glm::vec3(1.0, 1.0, 1.0)
             }
         ));
+    }
+}
+
+
+pub fn rotate_chunks(
+    timer: Res<Timer>,
+    mut chunks: Query<(&mut Transform, &Chunk)>
+) {
+    for (mut transform, chunk) in chunks.iter_mut() {
+        transform.rotation = glm::vec4(
+            0.0,
+            (timer.total_time().as_secs_f32() * 0.25 * f32::consts::PI).sin(),
+            0.0,
+            (timer.total_time().as_secs_f32() * 0.25 * f32::consts::PI).cos()
+        );
     }
 }
