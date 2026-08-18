@@ -101,14 +101,14 @@ pub fn chunk_in_frustum(
     chunk_coord: &Transform,
     pvt_matrix: Matrix4<f32>
 ) -> bool {
-    point_in_frustum(chunk_coord.translation + glm::vec3(0.0, 0.0, 0.0), pvt_matrix) ||
-    point_in_frustum(chunk_coord.translation + glm::vec3(16.0, 0.0, 0.0), pvt_matrix) ||
-    point_in_frustum(chunk_coord.translation + glm::vec3(0.0, 16.0, 0.0), pvt_matrix) ||
-    point_in_frustum(chunk_coord.translation + glm::vec3(16.0, 16.0, 0.0), pvt_matrix) ||
-    point_in_frustum(chunk_coord.translation + glm::vec3(0.0, 0.0, 16.0), pvt_matrix) ||
-    point_in_frustum(chunk_coord.translation + glm::vec3(16.0, 0.0, 16.0), pvt_matrix) ||
-    point_in_frustum(chunk_coord.translation + glm::vec3(0.0, 16.0, 16.0), pvt_matrix) ||
-    point_in_frustum(chunk_coord.translation + glm::vec3(16.0, 16.0, 16.0), pvt_matrix)
+    point_in_frustum(chunk_coord.translation + glm::vec3(-8.0, -8.0, -8.0), pvt_matrix) ||
+    point_in_frustum(chunk_coord.translation + glm::vec3(8.0, -8.0, -8.0), pvt_matrix) ||
+    point_in_frustum(chunk_coord.translation + glm::vec3(-8.0, 8.0, -8.0), pvt_matrix) ||
+    point_in_frustum(chunk_coord.translation + glm::vec3(8.0, 8.0, -8.0), pvt_matrix) ||
+    point_in_frustum(chunk_coord.translation + glm::vec3(-8.0, -8.0, 8.0), pvt_matrix) ||
+    point_in_frustum(chunk_coord.translation + glm::vec3(8.0, -8.0, 8.0), pvt_matrix) ||
+    point_in_frustum(chunk_coord.translation + glm::vec3(-8.0, 8.0, 8.0), pvt_matrix) ||
+    point_in_frustum(chunk_coord.translation + glm::vec3(8.0, 8.0, 8.0), pvt_matrix)
 }
 
 pub fn chunk_nearby_camera(
@@ -116,9 +116,9 @@ pub fn chunk_nearby_camera(
     chunk_coord: &Transform
 ) -> bool {
     let chunk_center = glm::vec3(
-        chunk_coord.translation.x as f32 + 16.0 * (0.5f32),
-        chunk_coord.translation.y as f32 + 16.0 * (0.5f32),
-        chunk_coord.translation.z as f32 + 16.0 * (0.5f32)
+        chunk_coord.translation.x as f32,
+        chunk_coord.translation.y as f32,
+        chunk_coord.translation.z as f32
     );
 
     glm::distance(chunk_center, camera_pos) <= 16f32 * 2.0f32
