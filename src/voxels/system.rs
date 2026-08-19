@@ -289,6 +289,710 @@ pub fn generate_initial_chunks(
     }
 }
 
+pub fn generate_hermit_crab_chunks(
+    mut commands: Commands
+) {
+    let mut claw = Chunk::new(Size::new(3, 2, 2));
+    claw.set_is_air(false);
+
+    for y in 0..2 {
+        for z in 0..2 {
+            for x in 0..3 {
+                let mut id = 15;
+
+                if y == 1 && x == 1 && z == 0 {
+                    id = 14;
+                }
+
+                claw.set_voxel(x, y, z, Voxel {
+                    metadata: 0,
+                    data: id,
+                });
+            }
+        }
+    }
+
+    commands.spawn((
+        claw,
+        Transform {
+            translation: glm::vec3(3.0, -1.0, -3.5),
+            rotation: glm::vec4(-0.0789899, 0.4210101, -0.0368336, 0.902859),
+            scale: glm::vec3(1.0, 1.0, 1.0)
+        }
+    ));
+
+    let mut crusher = Chunk::new(Size::new(3, 2, 2));
+    crusher.set_is_air(false);
+
+    for y in 0..2 {
+        for z in 0..2 {
+            for x in 0..3 {
+                let mut id = 15;
+
+                if y == 1 && x == 1 && z == 1 {
+                    id = 14;
+                }
+
+                crusher.set_voxel(x, y, z, Voxel {
+                    metadata: 0,
+                    data: id,
+                });
+            }
+        }
+    }
+
+    commands.spawn((
+        crusher,
+        Transform {
+            translation: glm::vec3(-3.0, -1.0, -3.5),
+            rotation: glm::vec4(-0.029809, 0.9361168, -0.0818996, 0.3407187),
+            scale: glm::vec3(1.0, 1.0, 1.0)
+        }
+    ));
+
+    let mut shell = Chunk::new(Size::new(5, 5, 5));
+    shell.set_is_air(false);
+
+    for y in 0..5 {
+        for z in 0..5 {
+            for x in 0..5 {
+                shell.set_voxel(x, y, z, Voxel {
+                    metadata: 0,
+                    data: 12,
+                });
+            }
+        }
+    }
+
+    // -x face
+    shell.set_voxel(0, 0, 0, Voxel {
+        metadata: 0,
+        data: 9,
+    });
+    shell.set_voxel(0, 0, 1, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(0, 0, 2, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(0, 0, 3, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(0, 0, 4, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+
+    shell.set_voxel(0, 1, 0, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(0, 1, 1, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(0, 1, 2, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(0, 1, 3, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(0, 1, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+
+    shell.set_voxel(0, 2, 0, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(0, 2, 1, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(0, 2, 2, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(0, 2, 3, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(0, 2, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+
+    shell.set_voxel(0, 3, 0, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(0, 3, 1, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(0, 3, 2, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(0, 3, 3, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(0, 3, 4, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+
+    shell.set_voxel(0, 4, 0, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(0, 4, 1, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(0, 4, 2, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(0, 4, 3, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(0, 4, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+
+    // +x face
+    shell.set_voxel(4, 0, 0, Voxel {
+        metadata: 0,
+        data: 9,
+    });
+    shell.set_voxel(4, 0, 1, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(4, 0, 2, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(4, 0, 3, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(4, 0, 4, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+
+    shell.set_voxel(4, 1, 0, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(4, 1, 1, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(4, 1, 2, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(4, 1, 3, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(4, 1, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+
+    shell.set_voxel(4, 2, 0, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(4, 2, 1, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(4, 2, 2, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(4, 2, 3, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(4, 2, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+
+    shell.set_voxel(4, 3, 0, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(4, 3, 1, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(4, 3, 2, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(4, 3, 3, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(4, 3, 4, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+
+    shell.set_voxel(4, 4, 0, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(4, 4, 1, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(4, 4, 2, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(4, 4, 3, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(4, 4, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+
+    // -z face
+    shell.set_voxel(0, 0, 0, Voxel {
+        metadata: 0,
+        data: 9,
+    });
+    shell.set_voxel(1, 0, 0, Voxel {
+        metadata: 0,
+        data: 9,
+    });
+    shell.set_voxel(2, 0, 0, Voxel {
+        metadata: 0,
+        data: 9,
+    });
+    shell.set_voxel(3, 0, 0, Voxel {
+        metadata: 0,
+        data: 9,
+    });
+    shell.set_voxel(4, 0, 0, Voxel {
+        metadata: 0,
+        data: 9,
+    });
+
+    shell.set_voxel(0, 1, 0, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(1, 1, 0, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(2, 1, 0, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(3, 1, 0, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+    shell.set_voxel(4, 1, 0, Voxel {
+        metadata: 0,
+        data: 10,
+    });
+
+    shell.set_voxel(0, 2, 0, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(1, 2, 0, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(2, 2, 0, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(3, 2, 0, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(4, 2, 0, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+
+    shell.set_voxel(0, 3, 0, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(1, 3, 0, Voxel {
+        metadata: 0,
+        data: 13,
+    });
+    shell.set_voxel(2, 3, 0, Voxel {
+        metadata: 0,
+        data: 13,
+    });
+    shell.set_voxel(3, 3, 0, Voxel {
+        metadata: 0,
+        data: 13,
+    });
+    shell.set_voxel(4, 3, 0, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+
+    shell.set_voxel(0, 4, 0, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(1, 4, 0, Voxel {
+        metadata: 0,
+        data: 13,
+    });
+    shell.set_voxel(2, 4, 0, Voxel {
+        metadata: 0,
+        data: 13,
+    });
+    shell.set_voxel(3, 4, 0, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(4, 4, 0, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+
+    // +y face
+    shell.set_voxel(0, 4, 1, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(1, 4, 1, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(2, 4, 1, Voxel {
+        metadata: 0,
+        data: 13,
+    });
+    shell.set_voxel(3, 4, 1, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(4, 4, 1, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+
+    shell.set_voxel(0, 4, 2, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(1, 4, 2, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(2, 4, 2, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(3, 4, 2, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(4, 4, 2, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+
+    shell.set_voxel(0, 4, 3, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(1, 4, 3, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(2, 4, 3, Voxel {
+        metadata: 0,
+        data: 13,
+    });
+    shell.set_voxel(3, 4, 3, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(4, 4, 3, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+
+    shell.set_voxel(0, 4, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(1, 4, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(2, 4, 4, Voxel {
+        metadata: 0,
+        data: 13,
+    });
+    shell.set_voxel(3, 4, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(4, 4, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+
+    // +z face
+    shell.set_voxel(0, 0, 4, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(1, 0, 4, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(2, 0, 4, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(3, 0, 4, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(4, 0, 4, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+
+    shell.set_voxel(0, 1, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(1, 1, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(2, 1, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(3, 1, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(4, 1, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+
+    shell.set_voxel(0, 2, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(1, 2, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(2, 2, 4, Voxel {
+        metadata: 0,
+        data: 13,
+    });
+    shell.set_voxel(3, 2, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(4, 2, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+
+    shell.set_voxel(0, 3, 4, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(1, 3, 4, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(2, 3, 4, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(3, 3, 4, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+    shell.set_voxel(4, 3, 4, Voxel {
+        metadata: 0,
+        data: 11,
+    });
+
+    shell.set_voxel(0, 4, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(1, 4, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(2, 4, 4, Voxel {
+        metadata: 0,
+        data: 13,
+    });
+    shell.set_voxel(3, 4, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+    shell.set_voxel(4, 4, 4, Voxel {
+        metadata: 0,
+        data: 12,
+    });
+
+    commands.spawn((
+        shell,
+        Transform {
+            translation: glm::vec3(0.0, 0.0, 0.0),
+            rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
+            scale: glm::vec3(1.0, 1.0, 1.0)
+        }
+    ));
+
+    let mut body = Chunk::new(Size::new(3, 2, 4));
+    body.set_is_air(false);
+
+    for y in 0..2 {
+        for z in 0..4 {
+            for x in 0..3 {
+                body.set_voxel(x, y, z, Voxel {
+                    metadata: 0,
+                    data: 15,
+                });
+            }
+        }
+    }
+
+    commands.spawn((
+        body,
+        Transform {
+            translation: glm::vec3(0.0, -2.0, -1.0),
+            rotation: glm::vec4(-0.1305262, 0.0, 0.0, 0.9914449),
+            scale: glm::vec3(1.0, 1.0, 1.0)
+        }
+    ));
+
+    let mut eyes = Chunk::new(Size::new(3, 2, 1));
+    eyes.set_is_air(false);
+    eyes.set_voxel(0, 0, 0, Voxel {
+        metadata: 0,
+        data: 17,
+    });
+    eyes.set_voxel(0, 1, 0, Voxel {
+        metadata: 0,
+        data: 16,
+    });
+    eyes.set_voxel(2, 0, 0, Voxel {
+        metadata: 0,
+        data: 17,
+    });
+    eyes.set_voxel(2, 1, 0, Voxel {
+        metadata: 0,
+        data: 16,
+    });
+
+    commands.spawn((
+        eyes,
+        Transform {
+            translation: glm::vec3(0.0, 0.0, -3.5),
+            rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
+            scale: glm::vec3(1.0, 1.0, 1.0)
+        }
+    ));
+
+    let mut front_left_foot = Chunk::new(Size::new(1, 1, 1));
+    front_left_foot.set_is_air(false);
+    front_left_foot.set_voxel(0, 0, 0, Voxel {
+        metadata: 0,
+        data: 15,
+    });
+    commands.spawn((
+        front_left_foot,
+        Transform {
+            translation: glm::vec3(-1.5, -3.0, -1.5),
+            rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
+            scale: glm::vec3(1.0, 1.0, 1.0)
+        }
+    ));
+
+    let mut front_right_foot = Chunk::new(Size::new(1, 1, 1));
+    front_right_foot.set_is_air(false);
+    front_right_foot.set_voxel(0, 0, 0, Voxel {
+        metadata: 0,
+        data: 15,
+    });
+    commands.spawn((
+        front_right_foot,
+        Transform {
+            translation: glm::vec3(1.5, -3.0, -1.5),
+            rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
+            scale: glm::vec3(1.0, 1.0, 1.0)
+        }
+    ));
+
+    let mut back_left_foot = Chunk::new(Size::new(1, 1, 1));
+    back_left_foot.set_is_air(false);
+    back_left_foot.set_voxel(0, 0, 0, Voxel {
+        metadata: 0,
+        data: 15,
+    });
+    commands.spawn((
+        back_left_foot,
+        Transform {
+            translation: glm::vec3(-1.0, -3.0, 0.5),
+            rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
+            scale: glm::vec3(1.0, 1.0, 1.0)
+        }
+    ));
+
+    let mut back_right_foot = Chunk::new(Size::new(1, 1, 1));
+    back_right_foot.set_is_air(false);
+    back_right_foot.set_voxel(0, 0, 0, Voxel {
+        metadata: 0,
+        data: 15,
+    });
+    commands.spawn((
+        back_right_foot,
+        Transform {
+            translation: glm::vec3(1.0, -3.0, 0.5),
+            rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
+            scale: glm::vec3(1.0, 1.0, 1.0)
+        }
+    ));
+}
 
 pub fn rotate_chunks(
     timer: Res<Timer>,

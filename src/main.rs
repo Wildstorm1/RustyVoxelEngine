@@ -5,7 +5,7 @@
 use crate::camera::{ PlayerCamera, update_camera_direction, update_camera_position };
 use crate::render::{ RenderContext, VulkanContext, render };
 use crate::input::{ EngineEvent, InternalAppEvents, KeyboardButtonInput, MouseMotion, SdlContext, update_inputs, update_engine_events };
-use crate::voxels::{ VoxelMapSettings, generate_initial_chunks };
+use crate::voxels::{ VoxelMapSettings, generate_hermit_crab_chunks, generate_initial_chunks, rotate_chunks };
 use crate::timer::Timer;
 
 use bevy_ecs::message::{ MessageRegistry, message_update_system };
@@ -64,7 +64,8 @@ fn main() {
     MessageRegistry::register_message::<EngineEvent>(&mut world);
 
     let mut init_schedule = Schedule::default();
-    init_schedule.add_systems(generate_initial_chunks);
+    init_schedule.add_systems(generate_hermit_crab_chunks);
+    //init_schedule.add_systems(generate_initial_chunks);
 
     let mut input_schedule = Schedule::default();
     input_schedule.add_systems((
@@ -76,6 +77,7 @@ fn main() {
     let mut update_schedule = Schedule::default();
     update_schedule.add_systems(update_camera_position);
     update_schedule.add_systems(update_camera_direction::<VulkanContext>);
+    //update_schedule.add_systems(rotate_chunks);
 
     let mut render_schedule = Schedule::default();
     render_schedule.add_systems((

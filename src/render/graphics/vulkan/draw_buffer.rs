@@ -101,7 +101,6 @@ fn push_draw(
     }
 
     unsafe {
-        // TODO: Hardcoded chunk size
         device.device.cmd_bind_descriptor_sets(
             command_buffer,
             vk::PipelineBindPoint::GRAPHICS,
@@ -110,7 +109,7 @@ fn push_draw(
             &[ descriptor_set ],
             &[
                 packet.model_uniform_index as u32 * device.derived_properties.ubo_alignment_size as u32,
-                packet.chunk_index as u32 * 16 * 16 * 16 * size_of::<Voxel>() as u32
+                packet.voxel_model_index as u32 * size_of::<Voxel>() as u32
             ]
         );
     }

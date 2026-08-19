@@ -11,5 +11,5 @@ pub mod component;
 pub use chunk_cache::{ ChunkCache };
 pub use coord::{ Coord };
 pub use resource::{ VoxelMapSettings };
-pub use system::{ generate_initial_chunks, rotate_chunks };
+pub use system::{ generate_initial_chunks, rotate_chunks, generate_hermit_crab_chunks };
 pub use component::{ Chunk, Size };

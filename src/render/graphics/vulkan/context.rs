@@ -2,8 +2,7 @@
  * Copyright (C) 2026 Charles Nitschke montyn09@gmail.com All Rights Reserved
  */
 
-use super::super::hal::context::ImageExtent;
-use super::super::hal::context::{ Context, ContextError };
+use super::super::hal::context::{ Context, ContextError, ContextProperties, ImageExtent };
 use super::application::resources::{ VulkanResources };
 use super::frame_resources::{ VulkanFrameResources };
 use super::hardware::device::{ VulkanDevice };
@@ -231,6 +230,14 @@ impl Context for VulkanContext {
         self.frames[self.frame_number] = Some(next_frame.clone());
         self.frame_number = (self.frame_number + 1) % self.frame_contexts.len();
         Ok(next_frame)
+    }
+
+    fn properties(&self) -> ContextProperties {
+        let device_properties = self.device.properties;
+
+        ContextProperties {
+            min_storage_buffer_offset_alignment: device_properties.min_storage_buffer_offset_alignment,
+        }
     }
 
     fn image_extent(&self) -> ImageExtent {

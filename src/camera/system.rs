@@ -20,9 +20,9 @@ pub struct PlayerCamera {
 impl PlayerCamera {
     pub fn new() -> Self {
         Self {
-            yaw: 2.3220053f32,
-            pitch: -0.7900002f32,
-            pos: glm::vec3(84.0f32, 108.0f32, 68.0f32),
+            yaw: 2.0, //2.3220053f32,
+            pitch: -0.50, //-0.7900002f32,
+            pos: glm::vec3(11.24f32, 8.21f32, -24.01f32) //glm::vec3(84.0f32, 108.0f32, 68.0f32),
         }
     }
 

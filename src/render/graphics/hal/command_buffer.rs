@@ -12,7 +12,7 @@ use std::fmt;
 pub struct DrawPacket {
     pub camera: Camera,
     pub model_uniform_index: u64,
-    pub chunk_index: u64,
+    pub voxel_model_index: u64,
 }
 
 /*

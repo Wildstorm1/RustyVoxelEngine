@@ -40,6 +40,7 @@ pub struct DeviceQueueMetadata {
 #[derive(Debug, Clone, Copy)]
 pub struct DeviceProperties {
     pub min_uniform_buffer_offset_alignment: u64,
+    pub min_storage_buffer_offset_alignment: u64,
     pub max_sampler_anisotropy: f32,
 }
 
@@ -99,6 +100,7 @@ fn device_properties(
 
     DeviceProperties {
         min_uniform_buffer_offset_alignment: properties.limits.min_uniform_buffer_offset_alignment,
+        min_storage_buffer_offset_alignment: properties.limits.min_storage_buffer_offset_alignment,
         max_sampler_anisotropy: properties.limits.max_sampler_anisotropy,
     }
 }

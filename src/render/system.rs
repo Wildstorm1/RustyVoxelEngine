@@ -125,7 +125,8 @@ pub fn chunk_nearby_camera(
 }
 
 fn translation_to_ubo(
-    transform: &Transform
+    transform: &Transform,
+    size: &Size
 ) -> UniformBufferObject {
     let s_x = transform.scale.x;
     let s_y = transform.scale.y;
@@ -159,8 +160,22 @@ fn translation_to_ubo(
 
     UniformBufferObject {
         model: model_matrix,
-        size: glm::vec3(16.0, 16.0, 16.0)
+        size: glm::vec3(size.x() as f32, size.y() as f32, size.z() as f32)
     }
+}
+
+fn align_offset(
+    alignment: usize,
+    offset: usize
+) -> usize {
+    let min_alignment = alignment;
+    let mut aligned_size = offset;
+
+    if min_alignment > 0 {
+        aligned_size = (aligned_size + min_alignment + 1) & !(min_alignment - 1);
+    }
+
+    return aligned_size;
 }
 
 /*
@@ -175,11 +190,12 @@ pub fn render<T: Context>(
     let camera = compute_camera(&render_context, &camera_data);
     let pvt_matrix = (camera.proj * camera.view).transpose();
     let frame = render_context.context.next_frame().unwrap();
+    let properties = render_context.context.properties();
 
     /* ---------------------------------------------------------------------------------------------------- */
 
     /*
-     * Stage 0: Generate or cull data
+     * Stage 0: Generate data structures and cull data
      */
     let mut visible = Vec::new();
 
@@ -203,23 +219,28 @@ pub fn render<T: Context>(
     let resources = transfer_job.get_resources().unwrap();
 
     let mut i = 0;
+    let mut voxel = 0;
 
     for (transform, chunk) in visible.iter() {
+        let size = chunk.size();
+
         unsafe { resources.buffer_voxel_data_cpu_side(WriteVoxelBuffer {
-            offset: i,
+            offset: voxel,
             voxels: *chunk
         }).unwrap()};
 
         unsafe { resources.buffer_model_data_cpu_side(WriteModelBuffer {
             offset: i,
-            model: translation_to_ubo(*transform)
+            model: translation_to_ubo(*transform, &size)
         }).unwrap()};
 
         i += 1;
+        voxel += size.x() * size.y() * size.z();
+        voxel = align_offset(properties.min_storage_buffer_offset_alignment as usize, voxel);
     }
 
     /*
-     * Stage 2: Copy cpu to gpu (next frame?)
+     * Stage 2: Copy cpu to gpu
      */
 
     transfer_job.begin_job().unwrap();
@@ -227,13 +248,12 @@ pub fn render<T: Context>(
     let voxel_buffer = resources.get_buffer_handle(BufferHandles::VoxelsCPU).unwrap();
     let voxel_gpu_buffer = resources.get_buffer_handle(BufferHandles::VoxelsGPU).unwrap();
 
-    // TODO: Hardcoded chunk size
     command_buffer.copy_buffer(CopyBufferPacket {
         src: voxel_buffer,
         dst: voxel_gpu_buffer,
         src_offset: 0,
         dst_offset: 0,
-        bytes: (visible.len() * 16 * 16 * 16 * std::mem::size_of::<Voxel>()) as u64
+        bytes: (voxel * std::mem::size_of::<Voxel>()) as u64
     }).unwrap();
 
     command_buffer.stage().unwrap();
@@ -249,12 +269,21 @@ pub fn render<T: Context>(
     draw_job.begin_job().unwrap();
     let mut draw_command_buffer = draw_job.create_command_buffer().unwrap();
 
-    for i in 0..visible.len() {
+    let mut voxel = 0;
+    let mut i = 0;
+
+    for (_transform, chunk) in visible.iter() {
+        let size = chunk.size();
+
         draw_command_buffer.draw(DrawPacket {
             camera: camera,
             model_uniform_index: i as u64,
-            chunk_index: i as u64,
+            voxel_model_index: voxel as u64,
         }).unwrap();
+
+        i += 1;
+        voxel += size.x() * size.y() * size.z();
+        voxel = align_offset(properties.min_storage_buffer_offset_alignment as usize, voxel);
     };
 
     draw_command_buffer.stage().unwrap();

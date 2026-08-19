@@ -60,9 +60,8 @@ impl Resources for VulkanFrameResources {
     }
 
     unsafe fn buffer_voxel_data_cpu_side(&self, args: WriteVoxelBuffer) -> Result<(), ResourcesError> {
-        // TODO: Hard coded chunk size
         let voxel_buffer_start = self.resources.get_vulkan_buffer_pointer(BufferHandles::VoxelsCPU)? as *mut Voxel;
-        let vertex_slot = unsafe { voxel_buffer_start.add(args.offset * 16 * 16 * 16) };
+        let vertex_slot = unsafe { voxel_buffer_start.add(args.offset) };
 
         unsafe { std::ptr::copy_nonoverlapping(args.voxels.as_ptr(), vertex_slot, args.voxels.len()) };
 

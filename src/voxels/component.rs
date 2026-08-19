@@ -92,6 +92,10 @@ impl Chunk {
         self.is_all_air
     }
 
+    pub fn size(&self) -> Size {
+        self.size
+    }
+
     pub fn len(&self) -> usize {
         self.buffer.len()
     }
