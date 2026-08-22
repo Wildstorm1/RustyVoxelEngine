@@ -38,7 +38,7 @@ use crate::render::{
 };
 use crate::timer::Timer;
 use crate::transform::Transform;
-use crate::voxels::{ Chunk, Size, ChunkCache, Coord, VoxelMapSettings };
+use crate::voxels::{ Chunk, ChunkCache, ChunkWrapper, Coord, Grid, Size, VoxelMapSettings };
 
 fn fill_map_chunk(
     noise: &Perlin,
@@ -81,9 +81,12 @@ fn fill_map_chunk(
     chunk
 }
 
-fn set_voxel_flags(
+/*
+ * Assumes all necessary chunk data exists in the store
+ */
+fn set_voxel_flags<T: Grid>(
     voxel_coord: Coord,
-    chunk_store: &mut ChunkCache
+    chunk_store: &mut T
 ) {
     let mut voxel = chunk_store.get_voxel(voxel_coord).unwrap();
 
@@ -205,7 +208,7 @@ pub fn generate_initial_chunks(
     mut commands: Commands
 ) {
     let perlin = Perlin::new(1);
-    let mut chunk_store = ChunkCache::new();
+    let mut chunk_store = ChunkCache::new(Size::new(16, 16, 16));
     let mut coords = Vec::new();
 
     // Pass 1 assigns "solidness"
@@ -289,6 +292,24 @@ pub fn generate_initial_chunks(
     }
 }
 
+fn mesh_free_floating_chunk(
+    chunk: Chunk
+) -> Chunk {
+    let size = chunk.size();
+    let mut wrapper = ChunkWrapper::new(chunk);
+
+    for y in 0..size.y() {
+        for z in 0..size.z() {
+            for x in 0..size.x() {
+                let voxel_coord = Coord::new(x as i64, y as i64, z as i64);
+                set_voxel_flags(voxel_coord, &mut wrapper);
+            }
+        }
+    }
+
+    wrapper.to_owned()
+}
+
 pub fn generate_hermit_crab_chunks(
     mut commands: Commands
 ) {
@@ -313,7 +334,7 @@ pub fn generate_hermit_crab_chunks(
     }
 
     commands.spawn((
-        claw,
+        mesh_free_floating_chunk(claw),
         Transform {
             translation: glm::vec3(3.0, -1.0, -3.5),
             rotation: glm::vec4(-0.0789899, 0.4210101, -0.0368336, 0.902859),
@@ -342,7 +363,7 @@ pub fn generate_hermit_crab_chunks(
     }
 
     commands.spawn((
-        crusher,
+        mesh_free_floating_chunk(crusher),
         Transform {
             translation: glm::vec3(-3.0, -1.0, -3.5),
             rotation: glm::vec4(-0.029809, 0.9361168, -0.0818996, 0.3407187),
@@ -874,7 +895,7 @@ pub fn generate_hermit_crab_chunks(
     });
 
     commands.spawn((
-        shell,
+        mesh_free_floating_chunk(shell),
         Transform {
             translation: glm::vec3(0.0, 0.0, 0.0),
             rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
@@ -897,7 +918,7 @@ pub fn generate_hermit_crab_chunks(
     }
 
     commands.spawn((
-        body,
+        mesh_free_floating_chunk(body),
         Transform {
             translation: glm::vec3(0.0, -2.0, -1.0),
             rotation: glm::vec4(-0.1305262, 0.0, 0.0, 0.9914449),
@@ -925,7 +946,7 @@ pub fn generate_hermit_crab_chunks(
     });
 
     commands.spawn((
-        eyes,
+        mesh_free_floating_chunk(eyes),
         Transform {
             translation: glm::vec3(0.0, 0.0, -3.5),
             rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
@@ -940,7 +961,7 @@ pub fn generate_hermit_crab_chunks(
         data: 15,
     });
     commands.spawn((
-        front_left_foot,
+        mesh_free_floating_chunk(front_left_foot),
         Transform {
             translation: glm::vec3(-1.5, -3.0, -1.5),
             rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
@@ -970,7 +991,7 @@ pub fn generate_hermit_crab_chunks(
         data: 15,
     });
     commands.spawn((
-        back_left_foot,
+        mesh_free_floating_chunk(back_left_foot),
         Transform {
             translation: glm::vec3(-1.0, -3.0, 0.5),
             rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
@@ -985,7 +1006,7 @@ pub fn generate_hermit_crab_chunks(
         data: 15,
     });
     commands.spawn((
-        back_right_foot,
+        mesh_free_floating_chunk(back_right_foot),
         Transform {
             translation: glm::vec3(1.0, -3.0, 0.5),
             rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
