@@ -4,6 +4,7 @@
 
 use std::f32;
 
+use bevy_ecs::hierarchy::{ ChildOf };
 use bevy_ecs::system::{ Commands, Query, Res };
 use glm::Vector3;
 use noise::{ NoiseFn, Perlin };
@@ -38,7 +39,8 @@ use crate::render::{
 };
 use crate::timer::Timer;
 use crate::transform::Transform;
-use crate::voxels::{ Chunk, ChunkCache, ChunkWrapper, Coord, Grid, Size, VoxelMapSettings };
+use crate::transform::component::GlobalTransform;
+use crate::voxels::{ Chunk, ChunkCache, ChunkWrapper, Coord, Grid, Model, Size, VoxelMapSettings };
 
 fn fill_map_chunk(
     noise: &Perlin,
@@ -286,8 +288,9 @@ pub fn generate_initial_chunks(
                     (coord.z() * 16) as f32
                 ),
                 rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
-                scale: glm::vec3(1.0, 1.0, 1.0)
-            }
+                scale: 1.0,
+            },
+            GlobalTransform::IDENTITY,
         ));
     }
 }
@@ -313,6 +316,16 @@ fn mesh_free_floating_chunk(
 pub fn generate_hermit_crab_chunks(
     mut commands: Commands
 ) {
+    let hermit_model = commands.spawn((
+        Model {},
+        Transform {
+            translation: glm::vec3(100.5, 49.18, 100.5),
+            rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
+            scale: 1.0 / 16.0,
+        },
+        GlobalTransform::IDENTITY,
+    )).id();
+
     let mut claw = Chunk::new(Size::new(3, 2, 2));
     claw.set_is_air(false);
 
@@ -338,8 +351,10 @@ pub fn generate_hermit_crab_chunks(
         Transform {
             translation: glm::vec3(3.0, -1.0, -3.5),
             rotation: glm::vec4(-0.0789899, 0.4210101, -0.0368336, 0.902859),
-            scale: glm::vec3(1.0, 1.0, 1.0)
-        }
+            scale: 1.0,
+        },
+        GlobalTransform::IDENTITY,
+        ChildOf(hermit_model),
     ));
 
     let mut crusher = Chunk::new(Size::new(3, 2, 2));
@@ -367,8 +382,10 @@ pub fn generate_hermit_crab_chunks(
         Transform {
             translation: glm::vec3(-3.0, -1.0, -3.5),
             rotation: glm::vec4(-0.029809, 0.9361168, -0.0818996, 0.3407187),
-            scale: glm::vec3(1.0, 1.0, 1.0)
-        }
+            scale: 1.0,
+        },
+        GlobalTransform::IDENTITY,
+        ChildOf(hermit_model),
     ));
 
     let mut shell = Chunk::new(Size::new(5, 5, 5));
@@ -899,8 +916,10 @@ pub fn generate_hermit_crab_chunks(
         Transform {
             translation: glm::vec3(0.0, 0.0, 0.0),
             rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
-            scale: glm::vec3(1.0, 1.0, 1.0)
-        }
+            scale: 1.0,
+        },
+        GlobalTransform::IDENTITY,
+        ChildOf(hermit_model),
     ));
 
     let mut body = Chunk::new(Size::new(3, 2, 4));
@@ -922,8 +941,10 @@ pub fn generate_hermit_crab_chunks(
         Transform {
             translation: glm::vec3(0.0, -2.0, -1.0),
             rotation: glm::vec4(-0.1305262, 0.0, 0.0, 0.9914449),
-            scale: glm::vec3(1.0, 1.0, 1.0)
-        }
+            scale: 1.0,
+        },
+        GlobalTransform::IDENTITY,
+        ChildOf(hermit_model),
     ));
 
     let mut eyes = Chunk::new(Size::new(3, 2, 1));
@@ -950,8 +971,10 @@ pub fn generate_hermit_crab_chunks(
         Transform {
             translation: glm::vec3(0.0, 0.0, -3.5),
             rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
-            scale: glm::vec3(1.0, 1.0, 1.0)
-        }
+            scale: 1.0,
+        },
+        GlobalTransform::IDENTITY,
+        ChildOf(hermit_model),
     ));
 
     let mut front_left_foot = Chunk::new(Size::new(1, 1, 1));
@@ -965,8 +988,10 @@ pub fn generate_hermit_crab_chunks(
         Transform {
             translation: glm::vec3(-1.5, -3.0, -1.5),
             rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
-            scale: glm::vec3(1.0, 1.0, 1.0)
-        }
+            scale: 1.0,
+        },
+        GlobalTransform::IDENTITY,
+        ChildOf(hermit_model),
     ));
 
     let mut front_right_foot = Chunk::new(Size::new(1, 1, 1));
@@ -980,8 +1005,10 @@ pub fn generate_hermit_crab_chunks(
         Transform {
             translation: glm::vec3(1.5, -3.0, -1.5),
             rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
-            scale: glm::vec3(1.0, 1.0, 1.0)
-        }
+            scale: 1.0,
+        },
+        GlobalTransform::IDENTITY,
+        ChildOf(hermit_model),
     ));
 
     let mut back_left_foot = Chunk::new(Size::new(1, 1, 1));
@@ -995,8 +1022,10 @@ pub fn generate_hermit_crab_chunks(
         Transform {
             translation: glm::vec3(-1.0, -3.0, 0.5),
             rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
-            scale: glm::vec3(1.0, 1.0, 1.0)
-        }
+            scale: 1.0,
+        },
+        GlobalTransform::IDENTITY,
+        ChildOf(hermit_model),
     ));
 
     let mut back_right_foot = Chunk::new(Size::new(1, 1, 1));
@@ -1010,16 +1039,18 @@ pub fn generate_hermit_crab_chunks(
         Transform {
             translation: glm::vec3(1.0, -3.0, 0.5),
             rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
-            scale: glm::vec3(1.0, 1.0, 1.0)
-        }
+            scale: 1.0,
+        },
+        GlobalTransform::IDENTITY,
+        ChildOf(hermit_model),
     ));
 }
 
 pub fn rotate_chunks(
     timer: Res<Timer>,
-    mut chunks: Query<(&mut Transform, &Chunk)>
+    mut chunks: Query<(&mut Transform, &Model)>
 ) {
-    for (mut transform, chunk) in chunks.iter_mut() {
+    for (mut transform, model) in chunks.iter_mut() {
         transform.rotation = glm::vec4(
             0.0,
             (timer.total_time().as_secs_f32() * 0.25 * f32::consts::PI).sin(),

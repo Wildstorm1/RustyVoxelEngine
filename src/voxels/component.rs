@@ -104,3 +104,9 @@ impl Chunk {
         self.buffer.as_ptr()
     }
 }
+
+/*
+ * Model of voxel data
+ */
+#[derive(Component)]
+pub struct Model {}

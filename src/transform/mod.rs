@@ -3,5 +3,7 @@
  */
 
 pub mod component;
+pub mod system;
 
-pub use component::{ Transform };
+pub use component::{ Transform, GlobalTransform };
+pub use system::{ propagate_transform_system };

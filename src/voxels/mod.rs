@@ -14,6 +14,6 @@ pub use chunk_cache::{ ChunkCache };
 pub use coord::{ Coord };
 pub use resource::{ VoxelMapSettings };
 pub use system::{ generate_initial_chunks, rotate_chunks, generate_hermit_crab_chunks };
-pub use component::{ Chunk, Size };
+pub use component::{ Chunk, Size, Model };
 pub use grid::{ Grid, GridError };
 pub use chunk_wrapper::{ ChunkWrapper };

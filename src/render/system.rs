@@ -13,7 +13,7 @@ use crate::render::graphics::hal::resources::{BufferHandles, Resources, WriteMod
 use crate::render::{ Context, UniformBufferObject, Voxel, VulkanContext };
 use crate::render::graphics::Camera;
 use crate::render::graphics::hal::context::ImageExtent;
-use crate::transform::Transform;
+use crate::transform::{GlobalTransform, Transform};
 use crate::voxels::{Chunk, Coord, Size};
 
 /*
@@ -125,38 +125,10 @@ pub fn chunk_nearby_camera(
 }
 
 fn translation_to_ubo(
-    transform: &Transform,
+    transform: &GlobalTransform,
     size: &Size
 ) -> UniformBufferObject {
-    let s_x = transform.scale.x;
-    let s_y = transform.scale.y;
-    let s_z = transform.scale.z;
-
-    let r_x = transform.rotation.x;
-    let r_y = transform.rotation.y;
-    let r_z = transform.rotation.z;
-    let r_w = transform.rotation.w;
-
-    let t_x = transform.translation.x;
-    let t_y = transform.translation.y;
-    let t_z = transform.translation.z;
-
-    let model_matrix = glm::mat4(
-        1.0, 0.0, 0.0, 0.0,
-        0.0, 1.0, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        t_x, t_y, t_z, 1.0
-    ) * glm::mat4(
-        1.0 - 2.0 * r_y * r_y - 2.0 * r_z * r_z, 2.0 * (r_x * r_y + r_z * r_w), 2.0 * (r_x * r_z - r_y * r_w), 0.0,
-        2.0 * (r_x * r_y - r_z * r_w), 1.0 - 2.0 * r_x * r_x - 2.0 * r_z * r_z, 2.0 * (r_y * r_z + r_x * r_w), 0.0,
-        2.0 * (r_x * r_z + r_y * r_w), 2.0 * (r_y * r_z - r_x * r_w), 1.0 - 2.0 * r_x * r_x - 2.0 * r_y * r_y, 0.0,
-        0.0, 0.0, 0.0, 1.0
-    ) * glm::mat4(
-        s_x, 0.0, 0.0, 0.0,
-        0.0, s_y, 0.0, 0.0,
-        0.0, 0.0, s_z, 0.0,
-        0.0, 0.0, 0.0, 1.0
-    );
+    let model_matrix = transform.p_world;
 
     UniformBufferObject {
         model: model_matrix,
@@ -185,7 +157,7 @@ pub fn render<T: Context>(
     mut render_context: NonSendMut<RenderContext<T>>,
     mut app_event: ResMut<InternalAppEvents>,
     mut camera_data: Res<PlayerCamera>,
-    renderables: Query<(&Transform, &Chunk)>
+    renderables: Query<(&GlobalTransform, &Chunk)>
 ) {
     let camera = compute_camera(&render_context, &camera_data);
     let pvt_matrix = (camera.proj * camera.view).transpose();
@@ -204,9 +176,11 @@ pub fn render<T: Context>(
             continue;
         }
 
+        /* TODO: Fix this
         if !chunk_in_frustum(transform, pvt_matrix) && !chunk_nearby_camera(camera_data.position(), transform) {
             continue;
         }
+        */
 
         visible.push((transform, chunk));
     }

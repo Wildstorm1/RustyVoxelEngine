@@ -5,6 +5,7 @@
 use crate::camera::{ PlayerCamera, update_camera_direction, update_camera_position };
 use crate::render::{ RenderContext, VulkanContext, render };
 use crate::input::{ EngineEvent, InternalAppEvents, KeyboardButtonInput, MouseMotion, SdlContext, update_inputs, update_engine_events };
+use crate::transform::propagate_transform_system;
 use crate::voxels::{ VoxelMapSettings, generate_hermit_crab_chunks, generate_initial_chunks, rotate_chunks };
 use crate::timer::Timer;
 
@@ -65,7 +66,7 @@ fn main() {
 
     let mut init_schedule = Schedule::default();
     init_schedule.add_systems(generate_hermit_crab_chunks);
-    //init_schedule.add_systems(generate_initial_chunks);
+    init_schedule.add_systems(generate_initial_chunks);
 
     let mut input_schedule = Schedule::default();
     input_schedule.add_systems((
@@ -74,10 +75,13 @@ fn main() {
         update_engine_events.after(message_update_system)
     ));
 
+    let mut pre_update = Schedule::default();
+    pre_update.add_systems(propagate_transform_system);
+
     let mut update_schedule = Schedule::default();
     update_schedule.add_systems(update_camera_position);
     update_schedule.add_systems(update_camera_direction::<VulkanContext>);
-    //update_schedule.add_systems(rotate_chunks);
+    update_schedule.add_systems(rotate_chunks);
 
     let mut render_schedule = Schedule::default();
     render_schedule.add_systems((
@@ -90,6 +94,7 @@ fn main() {
         let start_time = Instant::now();
 
         input_schedule.run(&mut world);
+        pre_update.run(&mut world);
         update_schedule.run(&mut world);
         render_schedule.run(&mut world);
 
