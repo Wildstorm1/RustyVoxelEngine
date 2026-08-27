@@ -10,7 +10,7 @@ use bevy_ecs::resource::Resource;
 use bevy_ecs::system::{ NonSend, NonSendMut, Res, ResMut };
 use glm::Vector3;
 
-#[derive(Resource)]
+#[derive(Resource, Debug)]
 pub struct PlayerCamera {
     yaw: f32,
     pitch: f32,
@@ -20,9 +20,9 @@ pub struct PlayerCamera {
 impl PlayerCamera {
     pub fn new() -> Self {
         Self {
-            yaw: 2.3220053f32,
-            pitch: -0.7900002f32,
-            pos: glm::vec3(84.0f32, 108.0f32, 68.0f32),
+            yaw: 2.3620062f32,
+            pitch: 0.32999963f32,
+            pos: glm::vec3(106.22791f32, 44.592102f32, 94.91737f32),
         }
     }
 
