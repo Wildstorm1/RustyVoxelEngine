@@ -3,14 +3,14 @@
  */
 
 use crate::input::engine::InternalAppEvents;
-
 use super::engine::{EngineEvent};
 use super::keyboard::{KeyCode, KeyboardButtonInput};
-use super::mouse::{MouseMotion};
+use super::mouse::{MouseMotion, MouseButtonInput, MouseCode};
 use bevy_ecs::system::{NonSendMut, ResMut};
 use bevy_ecs::message::{MessageReader, MessageWriter};
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
+use sdl3::mouse::MouseButton;
 use sdl3::video::Window;
 use sdl3::{EventPump, Sdl};
 use std::sync::{Arc};
@@ -51,6 +51,7 @@ impl SdlContext {
 pub fn update_inputs(
     mut inputs: NonSendMut<SdlContext>,
     mut keyboard: ResMut<KeyboardButtonInput>,
+    mut mouse: ResMut<MouseButtonInput>,
     mut mouse_motion: MessageWriter<MouseMotion>,
     mut engine_events: MessageWriter<EngineEvent>
 ) {
@@ -69,6 +70,20 @@ pub fn update_inputs(
             },
             Event::MouseMotion { x, y, xrel, yrel, .. } => {
                 mouse_motion.write(MouseMotion { x, y, dx: xrel, dy: yrel });
+            },
+            Event::MouseButtonDown { mouse_btn, .. } => {
+                match mouse_btn {
+                    MouseButton::Left => mouse.press(MouseCode::LeftKey),
+                    MouseButton::Right => mouse.press(MouseCode::RightKey),
+                    _ => {}
+                }
+            },
+            Event::MouseButtonUp { mouse_btn, .. } => {
+                match mouse_btn {
+                    MouseButton::Left => mouse.un_press(MouseCode::LeftKey),
+                    MouseButton::Right => mouse.un_press(MouseCode::RightKey),
+                    _ => {}
+                }
             },
             Event::KeyDown { keycode, .. } => {
                 match keycode {

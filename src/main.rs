@@ -4,7 +4,7 @@
 
 use crate::camera::{ PlayerCamera, update_camera_direction, update_camera_position };
 use crate::render::{ RenderContext, VulkanContext, render };
-use crate::input::{ EngineEvent, InternalAppEvents, KeyboardButtonInput, MouseMotion, SdlContext, update_inputs, update_engine_events };
+use crate::input::{ EngineEvent, InternalAppEvents, KeyboardButtonInput, MouseButtonInput, MouseMotion, SdlContext, update_engine_events, update_inputs };
 use crate::transform::propagate_transform_system;
 use crate::voxels::{ VoxelMapSettings, generate_hermit_crab_chunks, generate_initial_chunks, rotate_chunks };
 use crate::timer::Timer;
@@ -58,6 +58,7 @@ fn main() {
     world.insert_non_send(RenderContext::new(context));
     world.insert_resource(PlayerCamera::new());
     world.insert_resource(KeyboardButtonInput::new());
+    world.insert_resource(MouseButtonInput::new());
     world.insert_resource(VoxelMapSettings::new(10, 10));
     world.insert_resource(InternalAppEvents::new());
     world.insert_resource(Timer::new());

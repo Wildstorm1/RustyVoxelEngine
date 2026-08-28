@@ -9,5 +9,5 @@ pub mod engine;
 
 pub use keyboard::{ KeyCode, KeyboardButtonInput };
 pub use system::{ SdlContext, update_inputs, update_engine_events };
-pub use mouse::MouseMotion;
+pub use mouse::{ MouseMotion, MouseCode, MouseButtonInput };
 pub use engine::{ EngineEvent, InternalAppEvents };
