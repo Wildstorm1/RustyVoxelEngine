@@ -4,10 +4,13 @@
 
 use std::f32;
 
+use bevy_ecs::entity::Entity;
 use bevy_ecs::hierarchy::{ ChildOf };
-use bevy_ecs::system::{ Commands, Query, Res };
+use bevy_ecs::system::{ Commands, Query, Res, ResMut };
 use glm::Vector3;
 use noise::{ NoiseFn, Perlin };
+use crate::camera::PlayerCamera;
+use crate::input::MouseButtonInput;
 use crate::render::{
     Voxel,
     RIGHT_FACE_METADATA_BIT,
@@ -40,30 +43,35 @@ use crate::render::{
 use crate::timer::Timer;
 use crate::transform::Transform;
 use crate::transform::component::GlobalTransform;
-use crate::voxels::{ Chunk, ChunkCache, ChunkWrapper, Coord, Grid, Model, Size, VoxelMapSettings };
+use crate::voxels::{ Chunk, ChunkCache, ChunkWrapper, Coord, Grid, Model, Size, VoxelMap, VoxelMapSettings };
 
 fn fill_map_chunk(
+    voxels: &Res<VoxelMapSettings>,
     noise: &Perlin,
-    coordinate: Vector3<f32>,
-    world_depth: f32,
-    chunk_size: usize
+    coordinate: Vector3<f32>
 ) -> Chunk {
-    let mut chunk = Chunk::new(Size::new(16, 16, 16));
+    let world_depth = (voxels.depth() * voxels.chunk_size()) as f32;
 
-    for x in 0..chunk_size {
-        for z in 0..chunk_size {
-            for y in 0..chunk_size {
+    let mut chunk = Chunk::new(Size::new(
+        voxels.chunk_size(),
+        voxels.chunk_size(),
+        voxels.chunk_size()
+    ));
+
+    for x in 0..voxels.chunk_size() {
+        for z in 0..voxels.chunk_size() {
+            for y in 0..voxels.chunk_size() {
                 let vox_pos = coordinate + glm::vec3(x as f32, y as f32, z as f32);
 
                 let turbulence = 20.0f64 * noise.get([
-                    vox_pos.x as f64 / 16.0,
-                    vox_pos.y as f64 / 16.0,
-                    vox_pos.z as f64 / 16.0
+                    vox_pos.x as f64 / voxels.chunk_size() as f64,
+                    vox_pos.y as f64 / voxels.chunk_size() as f64,
+                    vox_pos.z as f64 / voxels.chunk_size() as f64
                 ]);
 
                 let plane_value = noise.get([
-                    (vox_pos.x as f64 / 16.0 + turbulence) / 32.0f64,
-                    (vox_pos.z as f64 / 16.0 + turbulence) / 32.0f64
+                    (vox_pos.x as f64 / voxels.chunk_size() as f64 + turbulence) / 32.0f64,
+                    (vox_pos.z as f64 / voxels.chunk_size() as f64 + turbulence) / 32.0f64
                 ]);
 
                 let noise = 0.25f64 * ((plane_value + 1.0f64) / 2.0f64);
@@ -207,24 +215,31 @@ fn set_voxel_flags<T: Grid>(
 
 pub fn generate_initial_chunks(
     voxels: Res<VoxelMapSettings>,
+    mut voxel_map: ResMut<VoxelMap>,
     mut commands: Commands
 ) {
     let perlin = Perlin::new(1);
-    let mut chunk_store = ChunkCache::new(Size::new(16, 16, 16));
+    let mut chunk_store = ChunkCache::new(Size::new(
+        voxels.chunk_size(),
+        voxels.chunk_size(),
+        voxels.chunk_size()
+    ));
     let mut coords = Vec::new();
 
     // Pass 1 assigns "solidness"
     for cy in 0..voxels.depth() {
         for cz in 0..voxels.width() {
             for cx in 0..voxels.width() {
-                // TODO: hard-coded chunk size
-                let position = glm::vec3((cx * 16) as f32, (cy * 16) as f32, (cz * 16) as f32);
+                let position = glm::vec3(
+                    (cx * voxels.chunk_size()) as f32,
+                    (cy * voxels.chunk_size()) as f32,
+                    (cz * voxels.chunk_size()) as f32
+                );
 
                 let chunk = fill_map_chunk(
+                    &voxels,
                     &perlin,
-                    position,
-                    (voxels.depth() * 16) as f32,
-                    16
+                    position
                 );
 
                 chunk_store.cache(Coord::new(cx as i64, cy as i64, cz as i64), chunk);
@@ -236,9 +251,9 @@ pub fn generate_initial_chunks(
     for cy in 1..(voxels.depth() - 1) {
         for cz in 1..(voxels.width() - 1) {
             for cx in 1..(voxels.width() - 1) {
-                for x in (cx * 16)..((cx + 1) * 16) {
-                    for y in (cy * 16)..((cy + 1) * 16) {
-                        for z in (cz * 16)..((cz + 1) * 16) {
+                for x in (cx * voxels.chunk_size())..((cx + 1) * voxels.chunk_size()) {
+                    for y in (cy * voxels.chunk_size())..((cy + 1) * voxels.chunk_size()) {
+                        for z in (cz * voxels.chunk_size())..((cz + 1) * voxels.chunk_size()) {
                             let voxel_coord = Coord::new(x as i64, y as i64, z as i64);
                             let up_voxel = chunk_store.get_voxel(voxel_coord + Coord::unit_y()).unwrap();
                             let voxel = chunk_store.get_voxel(voxel_coord).unwrap();
@@ -264,9 +279,9 @@ pub fn generate_initial_chunks(
                 let chunk_coordinate = Coord::new(cx as i64, cy as i64, cz as i64);
                 coords.push(chunk_coordinate);
 
-                for x in (cx * 16)..((cx + 1) * 16) {
-                    for y in (cy * 16)..((cy + 1) * 16) {
-                        for z in (cz * 16)..((cz + 1) * 16) {
+                for x in (cx * voxels.chunk_size())..((cx + 1) * voxels.chunk_size()) {
+                    for y in (cy * voxels.chunk_size())..((cy + 1) * voxels.chunk_size()) {
+                        for z in (cz * voxels.chunk_size())..((cz + 1) * voxels.chunk_size()) {
                             let voxel_coord = Coord::new(x as i64, y as i64, z as i64);
                             set_voxel_flags(voxel_coord, &mut chunk_store);
                         }
@@ -279,19 +294,21 @@ pub fn generate_initial_chunks(
     for coord in coords {
         let chunk = chunk_store.remove_chunk(coord).unwrap();
 
-        commands.spawn((
+        let entity = commands.spawn((
             chunk,
             Transform {
                 translation: glm::vec3(
-                    (coord.x() * 16) as f32,
-                    (coord.y() * 16) as f32,
-                    (coord.z() * 16) as f32
+                    (coord.x() * voxels.chunk_size() as i64) as f32,
+                    (coord.y() * voxels.chunk_size() as i64) as f32,
+                    (coord.z() * voxels.chunk_size() as i64) as f32
                 ),
                 rotation: glm::vec4(0.0, 0.0, 0.0, 1.0),
                 scale: 1.0,
             },
             GlobalTransform::IDENTITY,
-        ));
+        )).id();
+
+        voxel_map.insert(coord, entity);
     }
 }
 

@@ -6,7 +6,7 @@ use crate::camera::{ PlayerCamera, update_camera_direction, update_camera_positi
 use crate::render::{ RenderContext, VulkanContext, render };
 use crate::input::{ EngineEvent, InternalAppEvents, KeyboardButtonInput, MouseButtonInput, MouseMotion, SdlContext, update_engine_events, update_inputs };
 use crate::transform::propagate_transform_system;
-use crate::voxels::{ VoxelMapSettings, generate_hermit_crab_chunks, generate_initial_chunks, rotate_chunks };
+use crate::voxels::{ VoxelMap, VoxelMapSettings, generate_hermit_crab_chunks, generate_initial_chunks, rotate_chunks };
 use crate::timer::Timer;
 
 use bevy_ecs::message::{ MessageRegistry, message_update_system };
@@ -59,7 +59,8 @@ fn main() {
     world.insert_resource(PlayerCamera::new());
     world.insert_resource(KeyboardButtonInput::new());
     world.insert_resource(MouseButtonInput::new());
-    world.insert_resource(VoxelMapSettings::new(10, 10));
+    world.insert_resource(VoxelMapSettings::new(10, 10, 16));
+    world.insert_resource(VoxelMap::new());
     world.insert_resource(InternalAppEvents::new());
     world.insert_resource(Timer::new());
     MessageRegistry::register_message::<MouseMotion>(&mut world);
