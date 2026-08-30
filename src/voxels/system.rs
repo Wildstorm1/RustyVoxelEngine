@@ -6,11 +6,11 @@ use std::f32;
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::hierarchy::{ ChildOf };
-use bevy_ecs::system::{ Commands, Query, Res, ResMut };
+use bevy_ecs::system::{ Commands, Query, Res, ResMut, Single };
 use glm::Vector3;
 use noise::{ NoiseFn, Perlin };
 use crate::camera::PlayerCamera;
-use crate::input::MouseButtonInput;
+use crate::input::{MouseButtonInput, MouseCode};
 use crate::render::{
     Voxel,
     RIGHT_FACE_METADATA_BIT,
@@ -1074,5 +1074,73 @@ pub fn rotate_chunks(
             0.0,
             (timer.total_time().as_secs_f32() * 0.25 * f32::consts::PI).cos()
         );
+    }
+}
+
+pub fn block_manipulation(
+    voxels: Res<VoxelMapSettings>,
+    voxel_map: ResMut<VoxelMap>,
+    camera_data: Res<PlayerCamera>,
+    mouse: ResMut<MouseButtonInput>,
+    mut chunks: Query<(Entity, &mut Chunk)>
+) {
+    if !mouse.is_pressed(MouseCode::LeftKey) {
+        return;
+    }
+
+    let ray_direction = glm::normalize(camera_data.look_direction()) * 0.1;
+    let mut position = camera_data.position();
+
+    for i in 0..100 {
+        position = position + ray_direction;
+
+        // NOTE: The mesh center is offset so that data voxel 0,0,0 is at negative coordinates
+        let chunk_coordinate = Coord::new(
+            ((position.x + 8.0) / 16.0).floor() as i64,
+            ((position.y + 8.0) / 16.0).floor() as i64,
+            ((position.z + 8.0) / 16.0).floor() as i64
+        );
+
+        let voxel_offset = Coord::new(
+            ((position.x + 8.0).floor() % voxels.chunk_size() as f32) as i64,
+            ((position.y + 8.0).floor() % voxels.chunk_size() as f32) as i64,
+            ((position.z + 8.0).floor() % voxels.chunk_size() as f32) as i64
+        );
+
+        let chunk_entity = voxel_map.get(chunk_coordinate);
+
+        if chunk_entity.is_none() {
+            continue;
+        }
+
+        let chunk_entity = chunk_entity.unwrap();
+        let chunk = chunks.get_mut(chunk_entity);
+
+        if chunk.is_err() {
+            continue;
+        }
+
+        let (chunk_entity, mut chunk) = chunk.unwrap();
+        let mut voxel = chunk.get_voxel(
+            voxel_offset.x() as usize,
+            voxel_offset.y() as usize,
+            voxel_offset.z() as usize
+        );
+
+        if chunk.is_air() || voxel.data == 0 {
+            continue;
+        }
+
+        voxel.metadata = 0;
+        voxel.data = 0;
+
+        chunk.set_voxel(
+            voxel_offset.x() as usize,
+            voxel_offset.y() as usize,
+            voxel_offset.z() as usize,
+            voxel
+        );
+
+        break;
     }
 }

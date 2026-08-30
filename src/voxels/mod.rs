@@ -13,7 +13,7 @@ pub mod chunk_wrapper;
 pub use chunk_cache::{ ChunkCache };
 pub use coord::{ Coord };
 pub use resource::{ VoxelMapSettings, VoxelMap };
-pub use system::{ generate_initial_chunks, rotate_chunks, generate_hermit_crab_chunks };
+pub use system::{ generate_initial_chunks, rotate_chunks, generate_hermit_crab_chunks, block_manipulation };
 pub use component::{ Chunk, Size, Model };
 pub use grid::{ Grid, GridError };
 pub use chunk_wrapper::{ ChunkWrapper };

@@ -52,6 +52,13 @@ impl VoxelMap {
         self.buffer.insert(coord, entity);
     }
 
+    pub fn get(&self, coord: Coord) -> Option<Entity> {
+        match self.buffer.get(&coord) {
+            Some(entity) => Some(*entity),
+            None => None
+        }
+    }
+
     pub fn remove(&mut self, coord: Coord) -> Option<Entity> {
         self.buffer.remove(&coord)
     }
